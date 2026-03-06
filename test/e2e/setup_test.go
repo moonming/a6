@@ -119,6 +119,17 @@ func waitForHealthy(url string, timeout time.Duration) error {
 	return fmt.Errorf("timeout waiting for %s: %v", url, lastErr)
 }
 
+// runA6WithEnv executes the a6 binary with custom environment variables.
+func runA6WithEnv(env []string, args ...string) (string, string, error) {
+	cmd := exec.Command(binaryPath, args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Env = append(os.Environ(), env...)
+	err := cmd.Run()
+	return stdout.String(), stderr.String(), err
+}
+
 // envOrDefault returns the value of the environment variable named by key,
 // or fallback if the variable is not set or empty.
 func envOrDefault(key, fallback string) string {

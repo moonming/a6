@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/api7/a6/pkg/cmd"
+	contextCmd "github.com/api7/a6/pkg/cmd/context"
 )
 
 // NewCmdRoot creates the root command for the a6 CLI.
@@ -24,14 +25,8 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
 	rootCmd.PersistentFlags().Bool("force", false, "Skip confirmation prompts")
 
-	// Resource commands will be registered here:
-	// rootCmd.AddCommand(route.NewCmdRoute(f))
-	// rootCmd.AddCommand(upstream.NewCmdUpstream(f))
-	// rootCmd.AddCommand(service.NewCmdService(f))
-	// rootCmd.AddCommand(consumer.NewCmdConsumer(f))
-	// rootCmd.AddCommand(ssl.NewCmdSSL(f))
-	// rootCmd.AddCommand(plugin.NewCmdPlugin(f))
-	// rootCmd.AddCommand(context.NewCmdContext(f))
+	// Command groups.
+	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
 
 	return rootCmd
 }

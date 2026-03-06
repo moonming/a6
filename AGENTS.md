@@ -23,6 +23,8 @@ List of project documents and their specific purpose:
 | `docs/coding-standards.md` | Go style, naming, formatting conventions | Before writing code |
 | `docs/testing-strategy.md` | Test patterns, mocking, fixtures, e2e testing | Before writing tests |
 | `docs/documentation-maintenance.md` | Doc update rules | After any code change |
+| `docs/user-guide/getting-started.md` | Installation, first context, quick start | New users, onboarding |
+| `docs/user-guide/configuration.md` | Config file, env vars, context commands | When working with config/context |
 | `.github/workflows/ci.yml` | Unit test + lint CI workflow | When modifying CI |
 | `.github/workflows/e2e.yml` | E2E test CI with real APISIX | When modifying e2e infrastructure |
 
@@ -113,6 +115,7 @@ make docker-down    # Tear down
 **Key files:**
 - `test/e2e/setup_test.go` — TestMain (builds binary, health check, helpers)
 - `test/e2e/smoke_test.go` — Smoke tests verifying APISIX is reachable
+- `test/e2e/context_test.go` — Context management e2e tests (local config, no APISIX needed)
 - `test/e2e/apisix_conf/config.yaml` — APISIX config for CI (etcd at `127.0.0.1:2379`)
 - `test/e2e/apisix_conf/config-docker.yaml` — APISIX config for docker-compose (etcd at `etcd:2379`)
 - `test/e2e/docker-compose.yml` — Local docker-compose stack
