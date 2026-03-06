@@ -16,6 +16,7 @@ List of project documents and their specific purpose:
 |---|---|---|
 | `AGENTS.md` (this file) | Entry point, development guide | Always — read first |
 | `PRD.md` | Product requirements, command design, scope | Before adding new features |
+| `docs/roadmap.md` | Per-PR development plan with dependencies | Before starting any PR |
 | `docs/admin-api-spec.md` | Complete APISIX Admin API reference | When implementing API client code |
 | `docs/adr/001-tech-stack.md` | Architecture decisions, project structure, patterns | Before writing any code |
 | `docs/golden-example.md` | Complete `route list` implementation as template | When adding any new command |
