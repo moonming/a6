@@ -8,12 +8,14 @@ import (
 	consumerCmd "github.com/api7/a6/pkg/cmd/consumer"
 	consumergroupCmd "github.com/api7/a6/pkg/cmd/consumergroup"
 	contextCmd "github.com/api7/a6/pkg/cmd/context"
+	credentialCmd "github.com/api7/a6/pkg/cmd/credential"
 	globalruleCmd "github.com/api7/a6/pkg/cmd/globalrule"
 	pluginCmd "github.com/api7/a6/pkg/cmd/plugin"
 	pluginconfigCmd "github.com/api7/a6/pkg/cmd/pluginconfig"
 	pluginmetadataCmd "github.com/api7/a6/pkg/cmd/pluginmetadata"
 	protoCmd "github.com/api7/a6/pkg/cmd/proto"
 	routeCmd "github.com/api7/a6/pkg/cmd/route"
+	secretCmd "github.com/api7/a6/pkg/cmd/secret"
 	serviceCmd "github.com/api7/a6/pkg/cmd/service"
 	sslCmd "github.com/api7/a6/pkg/cmd/ssl"
 	streamrouteCmd "github.com/api7/a6/pkg/cmd/streamroute"
@@ -44,12 +46,14 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(consumerCmd.NewCmdConsumer(f))
 	rootCmd.AddCommand(consumergroupCmd.NewCmdConsumerGroup(f))
 	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
+	rootCmd.AddCommand(credentialCmd.NewCmdCredential(f))
 	rootCmd.AddCommand(globalruleCmd.NewCmdGlobalRule(f))
 	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
 	rootCmd.AddCommand(pluginconfigCmd.NewCmdPluginConfig(f))
 	rootCmd.AddCommand(pluginmetadataCmd.NewCmdPluginMetadata(f))
 	rootCmd.AddCommand(protoCmd.NewCmdProto(f))
 	rootCmd.AddCommand(routeCmd.NewCmdRoute(f))
+	rootCmd.AddCommand(secretCmd.NewCmdSecret(f))
 	rootCmd.AddCommand(serviceCmd.NewCmdService(f))
 	rootCmd.AddCommand(sslCmd.NewCmdSSL(f))
 	rootCmd.AddCommand(streamrouteCmd.NewCmdStreamRoute(f))
