@@ -1,9 +1,11 @@
 package sync
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -133,12 +135,51 @@ func applyAllDeletes(client *api.Client, result *configutil.DiffResult) error {
 	sections := result.Sections()
 	for i := len(sections) - 1; i >= 0; i-- {
 		for _, item := range sections[i].Diff.Delete {
-			if err := deleteResource(client, sections[i].Name, item.Key); err != nil {
+			if err := deleteResourceWithRetry(client, sections[i].Name, item.Key); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// isStillReferencedError returns true if the APISIX error indicates a
+// resource cannot be deleted because it is still referenced by another
+// resource (e.g., an upstream referenced by a route). This can happen
+// transiently when APISIX has not yet propagated a preceding update
+// through its etcd watch.
+func isStillReferencedError(err error) bool {
+	var apiErr *api.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.StatusCode == 400 && strings.Contains(apiErr.ErrorMsg, "still using it")
+}
+
+// deleteResourceWithRetry retries delete when APISIX reports the resource
+// is still referenced. After an update removes a reference (e.g., route
+// switches from upstream_id to inline upstream), APISIX may need a brief
+// moment to propagate the change through its etcd watch before the
+// upstream can be deleted.
+func deleteResourceWithRetry(client *api.Client, resourceType, key string) error {
+	const maxRetries = 5
+	backoff := 500 * time.Millisecond
+
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		lastErr = deleteResource(client, resourceType, key)
+		if lastErr == nil {
+			return nil
+		}
+		if !isStillReferencedError(lastErr) {
+			return lastErr
+		}
+		if attempt < maxRetries {
+			time.Sleep(backoff)
+			backoff *= 2
+		}
+	}
+	return lastErr
 }
 
 func putResource(client *api.Client, resourceType, key string, payload map[string]interface{}) error {
