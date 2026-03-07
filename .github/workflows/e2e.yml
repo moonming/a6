@@ -53,7 +53,7 @@ jobs:
       - name: Start httpbin
         run: |
           docker run -d --name httpbin \
-            -p 8080:8080 \
+            --network host \
             ghcr.io/mccutchen/go-httpbin
 
       - name: Wait for APISIX

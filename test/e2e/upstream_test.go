@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,9 +206,16 @@ func TestUpstream_RouteWithUpstreamID(t *testing.T) {
 	resp.Body.Close()
 	require.Less(t, resp.StatusCode, 400, "failed to create route with upstream_id")
 
-	// Send HTTP request through gateway
-	gwResp, err := http.Get(gatewayURL + "/test-ups-ref/get")
-	require.NoError(t, err, "gateway request should succeed")
+	var gwResp *http.Response
+	for i := 0; i < 10; i++ {
+		gwResp, err = http.Get(gatewayURL + "/test-ups-ref/get")
+		require.NoError(t, err, "gateway request should succeed")
+		if gwResp.StatusCode == http.StatusOK {
+			break
+		}
+		gwResp.Body.Close()
+		time.Sleep(500 * time.Millisecond)
+	}
 	defer gwResp.Body.Close()
 	assert.Equal(t, http.StatusOK, gwResp.StatusCode, "gateway should return 200 for proxied request")
 }
