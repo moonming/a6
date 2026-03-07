@@ -1,8 +1,12 @@
 package root
 
 import (
+	"os"
+	"os/exec"
+
 	"github.com/spf13/cobra"
 
+	"github.com/api7/a6/internal/extension"
 	"github.com/api7/a6/pkg/cmd"
 	"github.com/api7/a6/pkg/cmd/completion"
 	configCmd "github.com/api7/a6/pkg/cmd/config"
@@ -11,6 +15,7 @@ import (
 	contextCmd "github.com/api7/a6/pkg/cmd/context"
 	credentialCmd "github.com/api7/a6/pkg/cmd/credential"
 	debugCmd "github.com/api7/a6/pkg/cmd/debug"
+	extensionCmd "github.com/api7/a6/pkg/cmd/extension"
 	globalruleCmd "github.com/api7/a6/pkg/cmd/globalrule"
 	pluginCmd "github.com/api7/a6/pkg/cmd/plugin"
 	pluginconfigCmd "github.com/api7/a6/pkg/cmd/pluginconfig"
@@ -52,6 +57,7 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
 	rootCmd.AddCommand(credentialCmd.NewCmdCredential(f))
 	rootCmd.AddCommand(debugCmd.NewCmdDebug(f))
+	rootCmd.AddCommand(extensionCmd.NewCmdExtension(f))
 	rootCmd.AddCommand(globalruleCmd.NewCmdGlobalRule(f))
 	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
 	rootCmd.AddCommand(pluginconfigCmd.NewCmdPluginConfig(f))
@@ -66,5 +72,39 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(upstreamCmd.NewCmdUpstream(f))
 	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 
+	rootCmd.AddGroup(&cobra.Group{ID: "extension", Title: "Extension Commands:"})
+	loadExtensionCommands(rootCmd)
+
 	return rootCmd
+}
+
+func loadExtensionCommands(rootCmd *cobra.Command) {
+	mgr := extension.NewManager(extension.DefaultExtensionsDir())
+	exts, err := mgr.List()
+	if err != nil {
+		return
+	}
+
+	for _, ext := range exts {
+		ext := ext
+		if ext.Name == "" || ext.Path == "" {
+			continue
+		}
+		cmd := &cobra.Command{
+			Use:                ext.Name,
+			Short:              ext.Description,
+			GroupID:            "extension",
+			DisableFlagParsing: true,
+			SilenceUsage:       true,
+			SilenceErrors:      true,
+			RunE: func(c *cobra.Command, args []string) error {
+				run := exec.Command(ext.Path, args...)
+				run.Stdin = os.Stdin
+				run.Stdout = os.Stdout
+				run.Stderr = os.Stderr
+				return run.Run()
+			},
+		}
+		rootCmd.AddCommand(cmd)
+	}
 }

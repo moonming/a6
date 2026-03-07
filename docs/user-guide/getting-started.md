@@ -308,3 +308,34 @@ a6 completion powershell | Out-String | Invoke-Expression
 a6 completion powershell > a6.ps1
 # Then source it from your PowerShell profile
 ```
+
+## CLI Extensions
+
+You can add new top-level `a6` commands by installing CLI extensions from GitHub releases.
+
+Install an extension:
+
+```bash
+a6 extension install <owner/repo>
+```
+
+List installed extensions:
+
+```bash
+a6 extension list
+```
+
+Upgrade one or all extensions:
+
+```bash
+a6 extension upgrade <name>
+a6 extension upgrade --all
+```
+
+Remove an extension:
+
+```bash
+a6 extension remove <name>
+```
+
+For complete usage and extension packaging details, see the [CLI Extensions Guide](extensions.md).
