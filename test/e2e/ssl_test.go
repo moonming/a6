@@ -158,10 +158,10 @@ func TestSSL_ListWithStatus(t *testing.T) {
 	resp.Body.Close()
 	require.Less(t, resp.StatusCode, 400, "failed to create test SSL")
 
-	// List and verify status column shows enabled
-	stdout, stderr, err := runA6WithEnv(env, "ssl", "list")
+	// List with JSON output and verify status field
+	stdout, stderr, err := runA6WithEnv(env, "ssl", "list", "--output", "json")
 	require.NoError(t, err, "ssl list failed: stdout=%s stderr=%s", stdout, stderr)
-	assert.Contains(t, stdout, "enabled", "list should show enabled status")
+	assert.Contains(t, stdout, `"status": 1`, "list should show status value")
 	assert.Contains(t, stdout, "status-test.example.com", "list should contain the SNI")
 }
 
