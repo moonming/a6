@@ -142,10 +142,16 @@ func TestConsumer_WithKeyAuth(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", tmpFile)
 	require.NoError(t, err, "consumer create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// 2. Create route with key-auth plugin via Admin API
+	// 2. Create route with key-auth plugin via Admin API.
+	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-consumer-auth/get.
 	routeBody := fmt.Sprintf(`{
 		"uri": "/test-consumer-auth/*",
-		"plugins": {"key-auth": {}},
+		"plugins": {
+			"key-auth": {},
+			"proxy-rewrite": {
+				"regex_uri": ["^/test-consumer-auth/(.*)", "/$1"]
+			}
+		},
 		"upstream": {
 			"type": "roundrobin",
 			"nodes": {"%s": 1}

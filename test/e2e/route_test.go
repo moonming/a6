@@ -258,9 +258,15 @@ func TestRoute_TrafficForwarding(t *testing.T) {
 	t.Cleanup(func() { deleteRoute(t, routeID) })
 
 	// Create route via Admin API: forward /test-e2e-traffic/* to httpbin (127.0.0.1:8080).
+	// Use proxy-rewrite to strip the prefix so httpbin receives /get instead of /test-e2e-traffic/get.
 	routeBody := `{
 		"uri": "/test-e2e-traffic/*",
 		"name": "traffic-test-route",
+		"plugins": {
+			"proxy-rewrite": {
+				"regex_uri": ["^/test-e2e-traffic/(.*)", "/$1"]
+			}
+		},
 		"upstream": {
 			"type": "roundrobin",
 			"nodes": {

@@ -181,8 +181,9 @@ func TestService_RouteWithServiceID(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "service", "create", "-f", tmpFile)
 	require.NoError(t, err, "service create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// Create route with service_id via Admin API
-	routeBody := fmt.Sprintf(`{"uri":"/test-svc-route/*","name":"svc-ref-route","service_id":"%s"}`, serviceID)
+	// Create route with service_id via Admin API.
+	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-svc-route/get.
+	routeBody := fmt.Sprintf(`{"uri":"/test-svc-route/*","name":"svc-ref-route","service_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-svc-route/(.*)","/$1"]}}}`, serviceID)
 	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
 	require.NoError(t, err)
 	resp.Body.Close()

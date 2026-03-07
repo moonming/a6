@@ -199,8 +199,9 @@ func TestUpstream_RouteWithUpstreamID(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", tmpFile)
 	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// Create route via Admin API with upstream_id
-	routeBody := fmt.Sprintf(`{"uri":"/test-ups-ref/*","name":"route-with-upstream-id","upstream_id":"%s"}`, upstreamID)
+	// Create route via Admin API with upstream_id.
+	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-ups-ref/get.
+	routeBody := fmt.Sprintf(`{"uri":"/test-ups-ref/*","name":"route-with-upstream-id","upstream_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-ups-ref/(.*)","/$1"]}}}`, upstreamID)
 	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
 	require.NoError(t, err)
 	resp.Body.Close()
