@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	contextCmd "github.com/api7/a6/pkg/cmd/context"
 	routeCmd "github.com/api7/a6/pkg/cmd/route"
+	upstreamCmd "github.com/api7/a6/pkg/cmd/upstream"
 )
 
 // NewCmdRoot creates the root command for the a6 CLI.
@@ -29,6 +30,7 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	// Command groups.
 	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
 	rootCmd.AddCommand(routeCmd.NewCmdRoute(f))
+	rootCmd.AddCommand(upstreamCmd.NewCmdUpstream(f))
 
 	return rootCmd
 }
