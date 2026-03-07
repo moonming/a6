@@ -166,3 +166,53 @@ a6 context current
 
 - Check the [Configuration Guide](configuration.md) for detailed configuration options.
 - See the [Route Management Guide](route.md) for comprehensive route CRUD operations.
+
+## Shell Completion
+
+The a6 CLI supports shell completion for bash, zsh, fish, and PowerShell.
+
+### Bash
+
+```bash
+# Load completions in current session
+source <(a6 completion bash)
+
+# To load completions for every session (Linux)
+a6 completion bash > /etc/bash_completion.d/a6
+
+# To load completions for every session (macOS with Homebrew)
+a6 completion bash > $(brew --prefix)/etc/bash_completion.d/a6
+```
+
+### Zsh
+
+```bash
+# Enable shell completion if not already done
+echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+# Generate and install completion
+a6 completion zsh > "${fpath[1]}/_a6"
+```
+
+You will need to start a new shell for this to take effect.
+
+### Fish
+
+```fish
+# Load completions in current session
+a6 completion fish | source
+
+# To load completions for every session
+a6 completion fish > ~/.config/fish/completions/a6.fish
+```
+
+### PowerShell
+
+```powershell
+# Load completions in current session
+a6 completion powershell | Out-String | Invoke-Expression
+
+# To load completions for every session, add to your profile
+a6 completion powershell > a6.ps1
+# Then source it from your PowerShell profile
+```

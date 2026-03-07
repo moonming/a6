@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/api7/a6/pkg/cmd"
+	"github.com/api7/a6/pkg/cmd/completion"
 	consumerCmd "github.com/api7/a6/pkg/cmd/consumer"
 	contextCmd "github.com/api7/a6/pkg/cmd/context"
 	pluginCmd "github.com/api7/a6/pkg/cmd/plugin"
@@ -11,6 +12,7 @@ import (
 	serviceCmd "github.com/api7/a6/pkg/cmd/service"
 	sslCmd "github.com/api7/a6/pkg/cmd/ssl"
 	upstreamCmd "github.com/api7/a6/pkg/cmd/upstream"
+	versionCmd "github.com/api7/a6/pkg/cmd/version"
 )
 
 // NewCmdRoot creates the root command for the a6 CLI.
@@ -32,6 +34,7 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.PersistentFlags().Bool("force", false, "Skip confirmation prompts")
 
 	// Command groups.
+	rootCmd.AddCommand(completion.NewCmdCompletion())
 	rootCmd.AddCommand(consumerCmd.NewCmdConsumer(f))
 	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
 	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
@@ -39,6 +42,7 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(serviceCmd.NewCmdService(f))
 	rootCmd.AddCommand(sslCmd.NewCmdSSL(f))
 	rootCmd.AddCommand(upstreamCmd.NewCmdUpstream(f))
+	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 
 	return rootCmd
 }
