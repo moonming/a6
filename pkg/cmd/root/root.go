@@ -7,10 +7,13 @@ import (
 	"github.com/api7/a6/pkg/cmd/completion"
 	consumerCmd "github.com/api7/a6/pkg/cmd/consumer"
 	contextCmd "github.com/api7/a6/pkg/cmd/context"
+	globalruleCmd "github.com/api7/a6/pkg/cmd/globalrule"
 	pluginCmd "github.com/api7/a6/pkg/cmd/plugin"
+	protoCmd "github.com/api7/a6/pkg/cmd/proto"
 	routeCmd "github.com/api7/a6/pkg/cmd/route"
 	serviceCmd "github.com/api7/a6/pkg/cmd/service"
 	sslCmd "github.com/api7/a6/pkg/cmd/ssl"
+	streamrouteCmd "github.com/api7/a6/pkg/cmd/streamroute"
 	upstreamCmd "github.com/api7/a6/pkg/cmd/upstream"
 	versionCmd "github.com/api7/a6/pkg/cmd/version"
 )
@@ -37,10 +40,13 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(completion.NewCmdCompletion())
 	rootCmd.AddCommand(consumerCmd.NewCmdConsumer(f))
 	rootCmd.AddCommand(contextCmd.NewCmdContext(f))
+	rootCmd.AddCommand(globalruleCmd.NewCmdGlobalRule(f))
 	rootCmd.AddCommand(pluginCmd.NewCmdPlugin(f))
+	rootCmd.AddCommand(protoCmd.NewCmdProto(f))
 	rootCmd.AddCommand(routeCmd.NewCmdRoute(f))
 	rootCmd.AddCommand(serviceCmd.NewCmdService(f))
 	rootCmd.AddCommand(sslCmd.NewCmdSSL(f))
+	rootCmd.AddCommand(streamrouteCmd.NewCmdStreamRoute(f))
 	rootCmd.AddCommand(upstreamCmd.NewCmdUpstream(f))
 	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 
