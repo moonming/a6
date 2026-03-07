@@ -80,3 +80,58 @@ Typical table output includes:
 - Upstream status and executed plugins (if APISIX debug headers are enabled)
 
 If APISIX does not return `Apisix-Plugins`, the output explains that APISIX debug mode should be enabled to expose executed plugins.
+
+## `a6 debug logs`
+
+Stream APISIX logs in real time. APISIX does not provide a native log-streaming API, so `a6` supports two modes:
+
+- **Docker mode (default):** runs `docker logs` against the APISIX container
+- **File mode:** tails a local log file when `--file` is provided
+
+```bash
+a6 debug logs
+```
+
+### Flags
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--follow` | `-f` | `false` | Stream logs continuously |
+| `--tail` | `-n` | `100` | Number of recent lines to show |
+| `--since` | | `""` | Show logs since duration (e.g., `5m`, `1h`, `24h`) |
+| `--type` | `-t` | `all` | Log type: `error`, `access`, `all` |
+| `--container` | `-c` | auto-detect | Docker container name |
+| `--file` | | `""` | Path to log file (use file tailing instead of Docker) |
+| `--output` | `-o` | `""` | Output format option (logs are passed through as raw lines) |
+
+### Examples
+
+Stream the last 100 lines from auto-detected APISIX container:
+
+```bash
+a6 debug logs
+```
+
+Follow logs from a specific container:
+
+```bash
+a6 debug logs --container apisix --follow
+```
+
+Read logs from the last hour:
+
+```bash
+a6 debug logs --container apisix --since 1h --tail 200
+```
+
+Tail a local file:
+
+```bash
+a6 debug logs --file /usr/local/apisix/logs/error.log --tail 200
+```
+
+Follow a local file continuously:
+
+```bash
+a6 debug logs --file /usr/local/apisix/logs/access.log --follow
+```

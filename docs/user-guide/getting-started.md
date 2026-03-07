@@ -173,6 +173,12 @@ a6 debug trace getting-started \
   --control-url http://127.0.0.1:9090
 ```
 
+To stream APISIX runtime logs while debugging:
+
+```bash
+a6 debug logs --container apisix --tail 50 --follow
+```
+
 ## Managing Multiple Contexts
 
 You can create multiple contexts for different environments like staging or production.
