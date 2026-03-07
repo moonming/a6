@@ -70,22 +70,23 @@ func TestRouteExport_BasicYAML(t *testing.T) {
 }
 
 func TestRouteExport_WithLabelFilter(t *testing.T) {
-	calledWithLabel := false
+	calledWithLabelKey := false
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if req.Method == http.MethodGet && req.URL.Path == "/apisix/admin/routes" {
-			if req.URL.Query().Get("label") == "env=test" {
-				calledWithLabel = true
+			if req.URL.Query().Get("label") == "env" {
+				calledWithLabelKey = true
 			}
+			// Return routes with labels; client-side filtering will match env=test
 			return &http.Response{
 				StatusCode: 200,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
-				Body:       io.NopCloser(strings.NewReader(`{"total":0,"list":[]}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"total":2,"list":[{"key":"/apisix/routes/r1","value":{"id":"r1","name":"match","uri":"/r1","labels":{"env":"test"}}},{"key":"/apisix/routes/r2","value":{"id":"r2","name":"no-match","uri":"/r2","labels":{"env":"prod"}}}]}`)),
 			}, nil
 		}
 		return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader(`{"error_msg":"not found"}`))}, nil
 	})
 
-	ios, _, _, stderr := iostreams.Test()
+	ios, _, stdout, _ := iostreams.Test()
 	f := &cmd.Factory{
 		IOStreams: ios,
 		HttpClient: func() (*http.Client, error) {
@@ -101,6 +102,8 @@ func TestRouteExport_WithLabelFilter(t *testing.T) {
 	err := c.Execute()
 
 	require.NoError(t, err)
-	assert.True(t, calledWithLabel)
-	assert.Contains(t, stderr.String(), "No routes found.")
+	assert.True(t, calledWithLabelKey, "should send only label key to API")
+	out := stdout.String()
+	assert.Contains(t, out, "match")
+	assert.NotContains(t, out, "no-match")
 }

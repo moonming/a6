@@ -142,15 +142,24 @@ func FetchRemoteConfig(client *api.Client) (*api.ConfigFile, error) {
 	}
 	streamRouteItems, err := fetchPaginated[api.StreamRoute](client, "/apisix/admin/stream_routes")
 	if err != nil {
-		return nil, err
+		if !cmdutil.IsOptionalResourceError(err) {
+			return nil, err
+		}
+		streamRouteItems = nil
 	}
 	protoItems, err := fetchPaginated[api.Proto](client, "/apisix/admin/protos")
 	if err != nil {
-		return nil, err
+		if !cmdutil.IsOptionalResourceError(err) {
+			return nil, err
+		}
+		protoItems = nil
 	}
 	secretItems, err := fetchPaginated[api.Secret](client, "/apisix/admin/secrets")
 	if err != nil {
-		return nil, err
+		if !cmdutil.IsOptionalResourceError(err) {
+			return nil, err
+		}
+		secretItems = nil
 	}
 
 	routes := make([]api.Route, 0, len(routeItems))

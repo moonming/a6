@@ -43,7 +43,7 @@ var updatedCredentialBody = `{
 
 func TestCredentialUpdate_Success(t *testing.T) {
 	reg := &httpmock.Registry{}
-	reg.Register(http.MethodPatch, "/apisix/admin/consumers/jack/credentials/cred-1", httpmock.JSONResponse(updatedCredentialBody))
+	reg.Register(http.MethodPut, "/apisix/admin/consumers/jack/credentials/cred-1", httpmock.JSONResponse(updatedCredentialBody))
 
 	ios, _, _, _ := iostreams.Test()
 	ios.SetStdoutTTY(false)

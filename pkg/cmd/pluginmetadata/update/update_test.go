@@ -42,7 +42,7 @@ var updatedPluginMetadataBody = `{
 
 func TestPluginMetadataUpdate_Success(t *testing.T) {
 	reg := &httpmock.Registry{}
-	reg.Register(http.MethodPatch, "/apisix/admin/plugin_metadata/syslog", httpmock.JSONResponse(updatedPluginMetadataBody))
+	reg.Register(http.MethodPut, "/apisix/admin/plugin_metadata/syslog", httpmock.JSONResponse(updatedPluginMetadataBody))
 
 	ios, _, stdout, _ := iostreams.Test()
 	ios.SetStdoutTTY(false)

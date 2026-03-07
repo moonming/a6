@@ -66,3 +66,16 @@ func IsNotFound(err error) bool {
 	var apiErr *api.APIError
 	return errors.As(err, &apiErr) && apiErr.StatusCode == 404
 }
+
+// IsOptionalResourceError returns true if the error indicates
+// a resource type is unavailable (e.g., stream mode disabled returns 400,
+// or the resource endpoint returns 404). Used to gracefully skip
+// optional resources like stream_routes, protos, and secrets during
+// config dump/sync.
+func IsOptionalResourceError(err error) bool {
+	var apiErr *api.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.StatusCode == 400 || apiErr.StatusCode == 404
+}

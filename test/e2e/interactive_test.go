@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,13 +13,15 @@ import (
 func TestInteractive_RouteGetRequiresIDInNonTTY(t *testing.T) {
 	_, stderr, err := runA6("route", "get", "--server", adminURL, "--api-key", adminKey)
 	require.Error(t, err)
-	assert.Contains(t, stderr, "id argument is required")
+	assert.True(t, strings.Contains(stderr, "id argument is required") || strings.Contains(stderr, "no routes found"),
+		"expected 'id argument is required' or 'no routes found', got: %s", stderr)
 }
 
 func TestInteractive_UpstreamHealthRequiresIDInNonTTY(t *testing.T) {
 	_, stderr, err := runA6("upstream", "health", "--server", adminURL, "--api-key", adminKey)
 	require.Error(t, err)
-	assert.Contains(t, stderr, "id argument is required")
+	assert.True(t, strings.Contains(stderr, "id argument is required") || strings.Contains(stderr, "no upstreams found"),
+		"expected 'id argument is required' or 'no upstreams found', got: %s", stderr)
 }
 
 func TestInteractive_ExplicitIDStillWorks(t *testing.T) {

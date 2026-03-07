@@ -96,15 +96,24 @@ func dumpRun(opts *Options) error {
 	}
 	streamRouteItems, err := fetchPaginated[api.StreamRoute](client, "/apisix/admin/stream_routes")
 	if err != nil {
-		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		if !cmdutil.IsOptionalResourceError(err) {
+			return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		}
+		streamRouteItems = nil
 	}
 	protoItems, err := fetchPaginated[api.Proto](client, "/apisix/admin/protos")
 	if err != nil {
-		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		if !cmdutil.IsOptionalResourceError(err) {
+			return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		}
+		protoItems = nil
 	}
 	secretItems, err := fetchPaginated[api.Secret](client, "/apisix/admin/secrets")
 	if err != nil {
-		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		if !cmdutil.IsOptionalResourceError(err) {
+			return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		}
+		secretItems = nil
 	}
 
 	routes := make([]api.Route, 0, len(routeItems))

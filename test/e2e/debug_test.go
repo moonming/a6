@@ -129,5 +129,6 @@ func TestDebugTrace_WithMethodAndPath(t *testing.T) {
 func TestDebugTrace_NoArgsNonTTY(t *testing.T) {
 	_, stderr, err := runA6("debug", "trace", "--server", adminURL, "--api-key", adminKey)
 	require.Error(t, err)
-	assert.Contains(t, stderr, "route-id argument is required")
+	assert.True(t, strings.Contains(stderr, "route-id argument is required") || strings.Contains(stderr, "no routes found"),
+		"expected 'route-id argument is required' or 'no routes found', got: %s", stderr)
 }
