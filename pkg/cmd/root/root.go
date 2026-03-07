@@ -21,6 +21,7 @@ import (
 	serviceCmd "github.com/api7/a6/pkg/cmd/service"
 	sslCmd "github.com/api7/a6/pkg/cmd/ssl"
 	streamrouteCmd "github.com/api7/a6/pkg/cmd/streamroute"
+	updateCmd "github.com/api7/a6/pkg/cmd/update"
 	upstreamCmd "github.com/api7/a6/pkg/cmd/upstream"
 	versionCmd "github.com/api7/a6/pkg/cmd/version"
 )
@@ -61,6 +62,7 @@ func NewCmdRoot(f *cmd.Factory) *cobra.Command {
 	rootCmd.AddCommand(serviceCmd.NewCmdService(f))
 	rootCmd.AddCommand(sslCmd.NewCmdSSL(f))
 	rootCmd.AddCommand(streamrouteCmd.NewCmdStreamRoute(f))
+	rootCmd.AddCommand(updateCmd.NewCmdUpdate(f))
 	rootCmd.AddCommand(upstreamCmd.NewCmdUpstream(f))
 	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 

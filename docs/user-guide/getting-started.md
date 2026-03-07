@@ -241,6 +241,24 @@ For full usage details across resource types, see the [Bulk Operations Guide](bu
 - Check the [Configuration Guide](configuration.md) for detailed configuration options.
 - See the [Route Management Guide](route.md) for comprehensive route CRUD operations.
 
+## Keeping a6 Up To Date
+
+You can update a6 to the latest GitHub release at any time:
+
+```bash
+a6 update
+```
+
+a6 also performs a non-blocking background update check and shows a notice when a newer version is available.
+
+To disable background update checks:
+
+```bash
+export A6_NO_UPDATE_CHECK=1
+```
+
+For full details, see the [Auto-Update Guide](auto-update.md).
+
 ## Shell Completion
 
 The a6 CLI supports shell completion for bash, zsh, fish, and PowerShell.

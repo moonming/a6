@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/api7/a6/internal/config"
+	"github.com/api7/a6/internal/update"
+	ver "github.com/api7/a6/internal/version"
 	"github.com/api7/a6/pkg/api"
 	"github.com/api7/a6/pkg/cmd"
 	"github.com/api7/a6/pkg/cmd/root"
@@ -55,10 +58,61 @@ func main() {
 		return nil
 	}
 
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	maybeCheckForUpdate(rootCmd, ios, os.Args[1:])
+
+	if err != nil {
 		if !cmdutil.IsSilent(err) {
 			fmt.Fprintln(ios.ErrOut, err)
 		}
 		os.Exit(1)
 	}
+}
+
+func maybeCheckForUpdate(rootCmd *cobra.Command, ios *iostreams.IOStreams, args []string) {
+	if shouldSkipUpdateCheck(rootCmd, ios, args) {
+		return
+	}
+
+	state, err := update.ReadState()
+	if err != nil {
+		return
+	}
+
+	if latestVersion, _, ok := update.UpdateAvailableFromState(state, ver.Version); ok {
+		fmt.Fprintf(ios.ErrOut, "A new version of a6 is available: %s → %s\nRun 'a6 update' to update.\n", ver.Version, latestVersion)
+	}
+
+	if !update.ShouldCheck(state, time.Now()) {
+		return
+	}
+
+	go func(now time.Time) {
+		latestVersion, latestURL, ok := update.CheckForUpdate()
+		newState := update.StateFile{CheckedAt: now}
+		if ok {
+			newState.LatestVersion = latestVersion
+			newState.LatestURL = latestURL
+		}
+		_ = update.WriteState(newState)
+	}(time.Now().UTC())
+}
+
+func shouldSkipUpdateCheck(rootCmd *cobra.Command, ios *iostreams.IOStreams, args []string) bool {
+	if !ios.IsStdoutTTY() {
+		return true
+	}
+	if os.Getenv("A6_NO_UPDATE_CHECK") != "" {
+		return true
+	}
+	if os.Getenv("CI") != "" {
+		return true
+	}
+
+	found, _, findErr := rootCmd.Find(args)
+	if findErr != nil || found == nil {
+		return false
+	}
+	name := found.Name()
+	return name == "update" || name == "version" || name == "completion"
 }
