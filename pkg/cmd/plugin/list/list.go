@@ -41,7 +41,7 @@ func NewCmdList(f *cmd.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.Subsystem, "subsystem", "", "Filter by subsystem: http, stream")
+	cmd.Flags().StringVar(&opts.Subsystem, "subsystem", "http", "Filter by subsystem: http, stream")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", "", "Output format: json, yaml, table")
 
 	return cmd
@@ -60,9 +60,8 @@ func listRun(opts *Options) error {
 
 	client := api.NewClient(httpClient, cfg.BaseURL())
 
-	query := map[string]string{}
-	if opts.Subsystem != "" {
-		query["subsystem"] = opts.Subsystem
+	query := map[string]string{
+		"subsystem": opts.Subsystem,
 	}
 
 	body, err := client.Get("/apisix/admin/plugins/list", query)
