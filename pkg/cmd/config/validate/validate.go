@@ -71,7 +71,7 @@ func validateRun(opts *Options) error {
 		}
 	}
 
-	errs := validateConfigFile(cfg)
+	errs := ValidateConfigFile(cfg)
 	if len(errs) > 0 {
 		return fmt.Errorf("config validation failed:\n- %s", strings.Join(errs, "\n- "))
 	}
@@ -80,7 +80,7 @@ func validateRun(opts *Options) error {
 	return nil
 }
 
-func validateConfigFile(cfg api.ConfigFile) []string {
+func ValidateConfigFile(cfg api.ConfigFile) []string {
 	errs := make([]string, 0)
 
 	if cfg.Version == "" {
