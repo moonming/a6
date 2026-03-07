@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	"github.com/api7/a6/pkg/cmd/ssl/create"
 	deletecmd "github.com/api7/a6/pkg/cmd/ssl/delete"
+	"github.com/api7/a6/pkg/cmd/ssl/export"
 	"github.com/api7/a6/pkg/cmd/ssl/get"
 	"github.com/api7/a6/pkg/cmd/ssl/list"
 	"github.com/api7/a6/pkg/cmd/ssl/update"
@@ -23,6 +24,7 @@ func NewCmdSSL(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(create.NewCmdCreate(f))
 	cmd.AddCommand(update.NewCmdUpdate(f))
 	cmd.AddCommand(deletecmd.NewCmdDelete(f))
+	cmd.AddCommand(export.NewCmdExport(f))
 
 	return cmd
 }

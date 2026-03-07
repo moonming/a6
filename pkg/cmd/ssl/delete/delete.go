@@ -24,6 +24,8 @@ type Options struct {
 
 	ID    string
 	Force bool
+	All   bool
+	Label string
 }
 
 func NewCmdDelete(f *cmd.Factory) *cobra.Command {
@@ -41,16 +43,31 @@ func NewCmdDelete(f *cmd.Factory) *cobra.Command {
 			if len(args) > 0 {
 				opts.ID = args[0]
 			}
+			if opts.All && opts.Label != "" {
+				return fmt.Errorf("--all and --label are mutually exclusive")
+			}
+			if opts.All && opts.ID != "" {
+				return fmt.Errorf("--all cannot be used with a specific ID")
+			}
+			if opts.Label != "" && opts.ID != "" {
+				return fmt.Errorf("--label cannot be used with a specific ID")
+			}
 			return deleteRun(opts)
 		},
 	}
 
 	cmd.Flags().BoolVar(&opts.Force, "force", false, "Skip confirmation prompt")
+	cmd.Flags().BoolVar(&opts.All, "all", false, "Delete all SSL certificates")
+	cmd.Flags().StringVar(&opts.Label, "label", "", "Delete SSL certificates matching label (key=value)")
 
 	return cmd
 }
 
 func deleteRun(opts *Options) error {
+	if opts.All || opts.Label != "" {
+		return bulkDeleteSSL(opts)
+	}
+
 	if opts.ID == "" {
 		if !opts.IO.IsStdinTTY() {
 			return fmt.Errorf("id argument is required (or run interactively in a terminal)")
@@ -96,6 +113,93 @@ func deleteRun(opts *Options) error {
 
 	fmt.Fprintf(opts.IO.Out, "✓ SSL certificate %s deleted.\n", opts.ID)
 	return nil
+}
+
+func bulkDeleteSSL(opts *Options) error {
+	cfg, err := opts.Config()
+	if err != nil {
+		return err
+	}
+
+	httpClient, err := opts.Client()
+	if err != nil {
+		return err
+	}
+
+	client := api.NewClient(httpClient, cfg.BaseURL())
+	ids, err := listAllSSLIDs(client, opts.Label)
+	if err != nil {
+		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+	}
+
+	if len(ids) == 0 {
+		fmt.Fprintln(opts.IO.ErrOut, "No SSL certificates found.")
+		return nil
+	}
+
+	if !opts.Force && opts.IO.IsStdinTTY() {
+		fmt.Fprintf(opts.IO.ErrOut, "Delete %d SSL certificates? (y/N): ", len(ids))
+		reader := bufio.NewReader(opts.IO.In)
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read confirmation: %w", err)
+		}
+		answer = strings.TrimSpace(strings.ToLower(answer))
+		if answer != "y" && answer != "yes" {
+			fmt.Fprintln(opts.IO.ErrOut, "Aborted.")
+			return nil
+		}
+	}
+
+	for _, id := range ids {
+		_, err := client.Delete(fmt.Sprintf("/apisix/admin/ssls/%s", id), nil)
+		if err != nil {
+			return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
+		}
+		fmt.Fprintf(opts.IO.Out, "✓ SSL certificate %s deleted.\n", id)
+	}
+
+	fmt.Fprintf(opts.IO.Out, "✓ %d SSL certificates deleted.\n", len(ids))
+	return nil
+}
+
+func listAllSSLIDs(client *api.Client, label string) ([]string, error) {
+	page := 1
+	pageSize := 500
+	ids := make([]string, 0)
+
+	for {
+		query := map[string]string{
+			"page":      fmt.Sprintf("%d", page),
+			"page_size": fmt.Sprintf("%d", pageSize),
+		}
+		if label != "" {
+			query["label"] = label
+		}
+
+		body, err := client.Get("/apisix/admin/ssls", query)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp api.ListResponse[api.SSL]
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
+
+		for _, item := range resp.List {
+			if item.Value.ID != nil && *item.Value.ID != "" {
+				ids = append(ids, *item.Value.ID)
+			}
+		}
+
+		if len(resp.List) == 0 || len(ids) >= resp.Total {
+			break
+		}
+		page++
+	}
+
+	return ids, nil
 }
 
 func selectSsl(opts *Options) (string, error) {

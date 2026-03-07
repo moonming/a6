@@ -219,6 +219,23 @@ You can verify the active context anytime:
 a6 context current
 ```
 
+## Bulk Operations
+
+You can delete or export multiple resources with one command.
+
+```bash
+# Delete all routes
+a6 route delete --all --force
+
+# Delete services by label
+a6 service delete --label env=staging --force
+
+# Export upstreams by label as JSON
+a6 upstream export --label team=platform --output json
+```
+
+For full usage details across resource types, see the [Bulk Operations Guide](bulk-operations.md).
+
 ## What's Next
 
 - Check the [Configuration Guide](configuration.md) for detailed configuration options.

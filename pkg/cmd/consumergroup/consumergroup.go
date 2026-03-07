@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	consumergroupCreate "github.com/api7/a6/pkg/cmd/consumergroup/create"
 	consumergroupDelete "github.com/api7/a6/pkg/cmd/consumergroup/delete"
+	consumergroupExport "github.com/api7/a6/pkg/cmd/consumergroup/export"
 	consumergroupGet "github.com/api7/a6/pkg/cmd/consumergroup/get"
 	consumergroupList "github.com/api7/a6/pkg/cmd/consumergroup/list"
 	consumergroupUpdate "github.com/api7/a6/pkg/cmd/consumergroup/update"
@@ -22,6 +23,7 @@ func NewCmdConsumerGroup(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(consumergroupCreate.NewCmdCreate(f))
 	cmd.AddCommand(consumergroupUpdate.NewCmdUpdate(f))
 	cmd.AddCommand(consumergroupDelete.NewCmdDelete(f))
+	cmd.AddCommand(consumergroupExport.NewCmdExport(f))
 
 	return cmd
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	pluginconfigCreate "github.com/api7/a6/pkg/cmd/pluginconfig/create"
 	pluginconfigDelete "github.com/api7/a6/pkg/cmd/pluginconfig/delete"
+	pluginconfigExport "github.com/api7/a6/pkg/cmd/pluginconfig/export"
 	pluginconfigGet "github.com/api7/a6/pkg/cmd/pluginconfig/get"
 	pluginconfigList "github.com/api7/a6/pkg/cmd/pluginconfig/list"
 	pluginconfigUpdate "github.com/api7/a6/pkg/cmd/pluginconfig/update"
@@ -23,6 +24,7 @@ func NewCmdPluginConfig(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(pluginconfigCreate.NewCmdCreate(f))
 	cmd.AddCommand(pluginconfigUpdate.NewCmdUpdate(f))
 	cmd.AddCommand(pluginconfigDelete.NewCmdDelete(f))
+	cmd.AddCommand(pluginconfigExport.NewCmdExport(f))
 
 	return cmd
 }

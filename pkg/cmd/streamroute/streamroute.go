@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	"github.com/api7/a6/pkg/cmd/streamroute/create"
 	deletecmd "github.com/api7/a6/pkg/cmd/streamroute/delete"
+	"github.com/api7/a6/pkg/cmd/streamroute/export"
 	"github.com/api7/a6/pkg/cmd/streamroute/get"
 	"github.com/api7/a6/pkg/cmd/streamroute/list"
 	"github.com/api7/a6/pkg/cmd/streamroute/update"
@@ -22,6 +23,7 @@ func NewCmdStreamRoute(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(create.NewCmdCreate(f))
 	cmd.AddCommand(update.NewCmdUpdate(f))
 	cmd.AddCommand(deletecmd.NewCmdDelete(f))
+	cmd.AddCommand(export.NewCmdExport(f))
 
 	return cmd
 }

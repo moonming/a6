@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	globalruleCreate "github.com/api7/a6/pkg/cmd/globalrule/create"
 	globalruleDelete "github.com/api7/a6/pkg/cmd/globalrule/delete"
+	globalruleExport "github.com/api7/a6/pkg/cmd/globalrule/export"
 	globalruleGet "github.com/api7/a6/pkg/cmd/globalrule/get"
 	globalruleList "github.com/api7/a6/pkg/cmd/globalrule/list"
 	globalruleUpdate "github.com/api7/a6/pkg/cmd/globalrule/update"
@@ -22,6 +23,7 @@ func NewCmdGlobalRule(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(globalruleCreate.NewCmdCreate(f))
 	cmd.AddCommand(globalruleUpdate.NewCmdUpdate(f))
 	cmd.AddCommand(globalruleDelete.NewCmdDelete(f))
+	cmd.AddCommand(globalruleExport.NewCmdExport(f))
 
 	return cmd
 }

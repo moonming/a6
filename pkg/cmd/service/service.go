@@ -6,6 +6,7 @@ import (
 	"github.com/api7/a6/pkg/cmd"
 	"github.com/api7/a6/pkg/cmd/service/create"
 	deletecmd "github.com/api7/a6/pkg/cmd/service/delete"
+	"github.com/api7/a6/pkg/cmd/service/export"
 	"github.com/api7/a6/pkg/cmd/service/get"
 	"github.com/api7/a6/pkg/cmd/service/list"
 	"github.com/api7/a6/pkg/cmd/service/update"
@@ -23,6 +24,7 @@ func NewCmdService(f *cmd.Factory) *cobra.Command {
 	cmd.AddCommand(create.NewCmdCreate(f))
 	cmd.AddCommand(update.NewCmdUpdate(f))
 	cmd.AddCommand(deletecmd.NewCmdDelete(f))
+	cmd.AddCommand(export.NewCmdExport(f))
 
 	return cmd
 }
