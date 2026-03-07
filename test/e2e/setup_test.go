@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -44,7 +45,17 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(tmpDir)
 
 	binaryPath = filepath.Join(tmpDir, "a6")
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, "github.com/api7/a6/cmd/a6")
+
+	// Resolve the module root so `go build ./cmd/a6` works regardless of
+	// the working directory the test runner uses.
+	modRoot, err := resolveModuleRoot()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to resolve module root: %v\n", err)
+		os.Exit(1)
+	}
+
+	buildCmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/a6")
+	buildCmd.Dir = modRoot
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	if err := buildCmd.Run(); err != nil {
@@ -137,4 +148,17 @@ func envOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func resolveModuleRoot() (string, error) {
+	cmd := exec.Command("go", "env", "GOMOD")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("go env GOMOD: %w", err)
+	}
+	gomod := strings.TrimSpace(string(out))
+	if gomod == "" || gomod == os.DevNull {
+		return "", fmt.Errorf("not inside a Go module")
+	}
+	return filepath.Dir(gomod), nil
 }
