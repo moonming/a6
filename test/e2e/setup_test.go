@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(tmpDir)
 
 	binaryPath = filepath.Join(tmpDir, "a6")
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, "../../cmd/a6")
+	buildCmd := exec.Command("go", "build", "-o", binaryPath, "github.com/api7/a6/cmd/a6")
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	if err := buildCmd.Run(); err != nil {

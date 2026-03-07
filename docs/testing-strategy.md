@@ -126,7 +126,7 @@ Three services are required:
 | Service | Image | Port | Purpose |
 |---------|-------|------|---------|
 | etcd | `bitnamilegacy/etcd:3.6` | `2379` | APISIX config store |
-| APISIX | `apache/apisix:3.11.0-debian` | `9180` (Admin), `9080` (Gateway) | Target instance |
+| APISIX | `apache/apisix:3.15.0-debian` | `9180` (Admin), `9080` (Gateway) | Target instance |
 | httpbin | `ghcr.io/mccutchen/go-httpbin` | `8080` | Upstream target |
 
 ### Running E2E Tests

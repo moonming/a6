@@ -47,7 +47,7 @@ jobs:
           docker run -d --name apisix \
             --network host \
             -v ${{ github.workspace }}/test/e2e/apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro \
-            apache/apisix:3.11.0-debian
+            apache/apisix:3.15.0-debian
           # config.yaml uses etcd at 127.0.0.1:2379 which is the service container
 
       - name: Start httpbin

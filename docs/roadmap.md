@@ -53,7 +53,7 @@ The e2e CI workflow uses three service containers running alongside the GitHub A
 | Service | Image | Port (host) | Purpose |
 |---------|-------|-------------|---------|
 | etcd | `bitnamilegacy/etcd:3.6` | `2379` | APISIX configuration store |
-| apisix | `apache/apisix:3.11.0-debian` | `9180` (Admin), `9080` (Data) | Target APISIX instance |
+| apisix | `apache/apisix:3.15.0-debian` | `9180` (Admin), `9080` (Data) | Target APISIX instance |
 | httpbin | `ghcr.io/mccutchen/go-httpbin` | `8080` | Upstream target for route testing |
 
 ### APISIX Configuration for Tests
@@ -192,7 +192,7 @@ on:
     branches: [main]
 
 env:
-  APISIX_DOCKER_TAG: "3.11.0-debian"
+  APISIX_DOCKER_TAG: "3.15.0-debian"
 
 jobs:
   e2e:
@@ -215,7 +215,7 @@ jobs:
           --health-retries 10
 
       apisix:
-        image: apache/apisix:3.11.0-debian
+        image: apache/apisix:3.15.0-debian
         ports:
           - 9180:9180
           - 9080:9080
@@ -275,7 +275,7 @@ version: "3"
 
 services:
   apisix:
-    image: apache/apisix:${APISIX_DOCKER_TAG:-3.11.0-debian}
+    image: apache/apisix:${APISIX_DOCKER_TAG:-3.15.0-debian}
     restart: always
     volumes:
       - ./apisix_conf/config.yaml:/usr/local/apisix/conf/config.yaml:ro
