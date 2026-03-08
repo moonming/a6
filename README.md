@@ -18,7 +18,7 @@ Built with an **AI-first development approach** — the codebase includes struct
 - **Shell completions** — Bash, Zsh, Fish, PowerShell (`a6 completion`)
 - **Self-update** — Update the CLI binary to the latest version (`a6 self-update`)
 - **Export** — Export configurations to Kubernetes, Helm, Terraform, or Standalone YAML (`a6 export`)
-- **AI agent skills** — 35+ built-in [SKILL.md files](skills/) for AI coding agents to work effectively with APISIX
+- **AI agent skills** — 40 built-in [SKILL.md files](skills/) for AI coding agents to work effectively with APISIX
 
 ## Quick Start
 
@@ -76,6 +76,8 @@ The `skills/` directory contains structured knowledge files (`SKILL.md`) that en
 | **Observability** | 6 | prometheus, skywalking, zipkin, http-logger, kafka-logger, datadog |
 | **Advanced Plugins** | 5 | serverless, ext-plugin, fault-injection, consumer-restriction, wolf-rbac |
 | **Operational Recipes** | 5 | blue-green, canary, circuit-breaker, health-check, mTLS |
+| **Advanced Recipes** | 3 | multi-tenant, api-versioning, graphql-proxy |
+| **Personas** | 2 | operator, developer |
 
 See [docs/skills.md](docs/skills.md) for the full skill format specification, taxonomy, and authoring guide.
 
