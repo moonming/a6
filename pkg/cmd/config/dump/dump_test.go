@@ -37,7 +37,7 @@ func registerEmptyResources(reg *httpmock.Registry, skip map[string]bool) {
 		"/apisix/admin/services",
 		"/apisix/admin/upstreams",
 		"/apisix/admin/consumers",
-		"/apisix/admin/ssl",
+		"/apisix/admin/ssls",
 		"/apisix/admin/global_rules",
 		"/apisix/admin/plugin_configs",
 		"/apisix/admin/consumer_groups",
@@ -220,5 +220,25 @@ func TestConfigDump_FileFlag(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "version: \"1\"")
 	assert.Contains(t, string(content), "uri: /hello")
+	reg.Verify(t)
+}
+
+func TestConfigDump_StreamRoutesDisabled(t *testing.T) {
+	reg := &httpmock.Registry{}
+	registerEmptyResources(reg, map[string]bool{"/apisix/admin/stream_routes": true})
+	reg.Register(http.MethodGet, "/apisix/admin/stream_routes", httpmock.StringResponse(http.StatusBadRequest,
+		`{"error_msg":"stream mode is disabled, can not add stream routes"}`))
+
+	ios, _, stdout, _ := iostreams.Test()
+
+	c := NewCmdDump(newFactory(reg, ios))
+	c.SetArgs([]string{"--output", "json"})
+	err := c.Execute()
+
+	require.NoError(t, err)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	assert.Equal(t, "1", result["version"])
+	assert.NotContains(t, result, "stream_routes")
 	reg.Verify(t)
 }

@@ -212,7 +212,7 @@ func putPathAndBody(resourceType, key string, payload map[string]interface{}) (s
 	case "consumers":
 		return "/apisix/admin/consumers", payload, nil
 	case "ssl":
-		return fmt.Sprintf("/apisix/admin/ssl/%s", key), payload, nil
+		return fmt.Sprintf("/apisix/admin/ssls/%s", key), payload, nil
 	case "global_rules":
 		return fmt.Sprintf("/apisix/admin/global_rules/%s", key), payload, nil
 	case "plugin_configs":
@@ -244,7 +244,7 @@ func deletePath(resourceType, key string) (string, error) {
 	case "consumers":
 		return fmt.Sprintf("/apisix/admin/consumers/%s", key), nil
 	case "ssl":
-		return fmt.Sprintf("/apisix/admin/ssl/%s", key), nil
+		return fmt.Sprintf("/apisix/admin/ssls/%s", key), nil
 	case "global_rules":
 		return fmt.Sprintf("/apisix/admin/global_rules/%s", key), nil
 	case "plugin_configs":

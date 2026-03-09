@@ -78,7 +78,7 @@ func dumpRun(opts *Options) error {
 	if err != nil {
 		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
 	}
-	sslItems, err := fetchPaginated[api.SSL](client, "/apisix/admin/ssl")
+	sslItems, err := fetchPaginated[api.SSL](client, "/apisix/admin/ssls")
 	if err != nil {
 		return fmt.Errorf("%s", cmdutil.FormatAPIError(err))
 	}

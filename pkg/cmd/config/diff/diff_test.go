@@ -37,7 +37,7 @@ func registerEmptyResources(reg *httpmock.Registry, skip map[string]bool) {
 		"/apisix/admin/services",
 		"/apisix/admin/upstreams",
 		"/apisix/admin/consumers",
-		"/apisix/admin/ssl",
+		"/apisix/admin/ssls",
 		"/apisix/admin/global_rules",
 		"/apisix/admin/plugin_configs",
 		"/apisix/admin/consumer_groups",
@@ -207,5 +207,25 @@ routes:
 	routes := result["routes"].(map[string]interface{})
 	create := routes["create"].([]interface{})
 	assert.Len(t, create, 1)
+	reg.Verify(t)
+}
+
+func TestConfigDiff_StreamRoutesDisabled(t *testing.T) {
+	reg := &httpmock.Registry{}
+	registerEmptyResources(reg, map[string]bool{"/apisix/admin/stream_routes": true})
+	reg.Register(http.MethodGet, "/apisix/admin/stream_routes", httpmock.StringResponse(http.StatusBadRequest,
+		`{"error_msg":"stream mode is disabled, can not add stream routes"}`))
+
+	local := writeConfig(t, `
+version: "1"
+`)
+
+	ios, _, stdout, _ := iostreams.Test()
+	c := NewCmdDiff(newFactory(reg, ios))
+	c.SetArgs([]string{"-f", local})
+	err := c.Execute()
+
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "No differences found.")
 	reg.Verify(t)
 }

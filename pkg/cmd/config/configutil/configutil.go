@@ -125,7 +125,7 @@ func FetchRemoteConfig(client *api.Client) (*api.ConfigFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	sslItems, err := fetchPaginated[api.SSL](client, "/apisix/admin/ssl")
+	sslItems, err := fetchPaginated[api.SSL](client, "/apisix/admin/ssls")
 	if err != nil {
 		return nil, err
 	}
