@@ -71,20 +71,16 @@ func TestProtoExport_BasicYAML(t *testing.T) {
 }
 
 func TestProtoExport_WithLabelFilter(t *testing.T) {
-	calledWithNormalizedLabel := false
-	rawQueryContainsUnescapedColon := false
+	calledWithLabelKey := false
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if req.Method == http.MethodGet && req.URL.Path == "/apisix/admin/protos" {
-			if req.URL.Query().Get("label") == "type:grpc" {
-				calledWithNormalizedLabel = true
-			}
-			if strings.Contains(req.URL.RawQuery, "label=type:grpc") {
-				rawQueryContainsUnescapedColon = true
+			if req.URL.Query().Get("label") == "type" {
+				calledWithLabelKey = true
 			}
 			return &http.Response{
 				StatusCode: 200,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
-				Body:       io.NopCloser(strings.NewReader(`{"total":1,"list":[{"key":"/apisix/protos/p1","value":{"id":"p1","content":"syntax = \"proto3\";","name":"grpc-proto"}}]}`)),
+				Body:       io.NopCloser(strings.NewReader(`{"total":1,"list":[{"key":"/apisix/protos/p1","value":{"id":"p1","content":"syntax = \"proto3\";","name":"grpc-proto","labels":{"type":"grpc"}}}]}`)),
 			}, nil
 		}
 		return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader(`{"error_msg":"not found"}`))}, nil
@@ -106,8 +102,7 @@ func TestProtoExport_WithLabelFilter(t *testing.T) {
 	err := c.Execute()
 
 	require.NoError(t, err)
-	assert.True(t, calledWithNormalizedLabel, "should send normalized label key:value to API")
-	assert.True(t, rawQueryContainsUnescapedColon, "colon in label value must not be percent-encoded in raw URL")
+	assert.True(t, calledWithLabelKey, "should send label key to API")
 	out := stdout.String()
 	assert.Contains(t, out, "grpc-proto")
 }

@@ -81,14 +81,26 @@ func IsOptionalResourceError(err error) bool {
 	return apiErr.StatusCode == 400 || apiErr.StatusCode == 404
 }
 
-// NormalizeLabel converts "key=value" to "key:value" for the APISIX Admin API.
+// NormalizeLabel extracts the label key for the APISIX Admin API query.
+// APISIX only supports filtering by key, not key:value pairs.
+// "env=test" → "env", "env" → "env", "" → ""
 func NormalizeLabel(label string) string {
 	if label == "" {
 		return ""
 	}
 	parts := strings.SplitN(label, "=", 2)
-	if len(parts) == 2 {
-		return parts[0] + ":" + parts[1]
+	return parts[0]
+}
+
+// ParseLabel splits a "key=value" label into key and value parts.
+// Returns (key, value) where value may be empty if no "=" is present.
+func ParseLabel(label string) (string, string) {
+	if label == "" {
+		return "", ""
 	}
-	return label
+	parts := strings.SplitN(label, "=", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
 }

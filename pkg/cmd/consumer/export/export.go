@@ -102,14 +102,15 @@ func fetchAll(client *api.Client, label string) ([]api.ListItem[api.Consumer], e
 	page := 1
 	pageSize := 500
 	items := make([]api.ListItem[api.Consumer], 0)
+	labelKey, labelValue := cmdutil.ParseLabel(label)
 
 	for {
 		query := map[string]string{
 			"page":      fmt.Sprintf("%d", page),
 			"page_size": fmt.Sprintf("%d", pageSize),
 		}
-		if label != "" {
-			query["label"] = cmdutil.NormalizeLabel(label)
+		if labelKey != "" {
+			query["label"] = labelKey
 		}
 
 		body, err := client.Get("/apisix/admin/consumers", query)
@@ -127,6 +128,16 @@ func fetchAll(client *api.Client, label string) ([]api.ListItem[api.Consumer], e
 			break
 		}
 		page++
+	}
+
+	if labelValue != "" {
+		filtered := items[:0]
+		for _, item := range items {
+			if item.Value.Labels != nil && item.Value.Labels[labelKey] == labelValue {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
 	}
 
 	return items, nil

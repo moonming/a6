@@ -83,6 +83,7 @@ func listRun(opts *Options) error {
 	if opts.URI != "" {
 		query["uri"] = opts.URI
 	}
+	labelKey, labelValue := cmdutil.ParseLabel(opts.Label)
 
 	body, err := client.Get("/apisix/admin/routes", query)
 	if err != nil {
@@ -94,8 +95,18 @@ func listRun(opts *Options) error {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	routes := make([]api.Route, len(resp.List))
-	for i, item := range resp.List {
+	filteredList := resp.List
+	if labelValue != "" {
+		filteredList = make([]api.ListItem[api.Route], 0, len(resp.List))
+		for _, item := range resp.List {
+			if item.Value.Labels != nil && item.Value.Labels[labelKey] == labelValue {
+				filteredList = append(filteredList, item)
+			}
+		}
+	}
+
+	routes := make([]api.Route, len(filteredList))
+	for i, item := range filteredList {
 		routes[i] = item.Value
 	}
 

@@ -30,7 +30,8 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 		deleteUpstreamViaAdmin(t, upstreamID)
 	})
 
-	upstreamBody := `{
+	upstreamBody := fmt.Sprintf(`{
+		"id": "%s",
 		"name": "health-test-upstream",
 		"type": "roundrobin",
 		"nodes": {"127.0.0.1:8080": 1},
@@ -48,13 +49,14 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 				}
 			}
 		}
-	}`
+	}`, upstreamID)
 	upstreamFile := filepath.Join(t.TempDir(), "upstream-health-check.json")
 	require.NoError(t, os.WriteFile(upstreamFile, []byte(upstreamBody), 0o644))
-	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "--id", upstreamID, "-f", upstreamFile)
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", upstreamFile)
 	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	routeBody := fmt.Sprintf(`{
+		"id": "%s",
 		"uri": "/test-health/*",
 		"name": "health-test-route",
 		"upstream_id": "%s",
@@ -63,10 +65,10 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 				"regex_uri": ["^/test-health/(.*)", "/$1"]
 			}
 		}
-	}`, upstreamID)
+	}`, routeID, upstreamID)
 	routeFile := filepath.Join(t.TempDir(), "route-health-check.json")
 	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
-	stdout, stderr, err = runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	stdout, stderr, err = runA6WithEnv(env, "route", "create", "-f", routeFile)
 	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	time.Sleep(3 * time.Second)
@@ -104,10 +106,10 @@ func TestUpstreamHealth_NoHealthCheck(t *testing.T) {
 	_, _, _ = runA6WithEnv(env, "upstream", "delete", upstreamID, "--force")
 	t.Cleanup(func() { deleteUpstreamViaAdmin(t, upstreamID) })
 
-	body := `{"name":"no-health-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`
+	body := fmt.Sprintf(`{"id":"%s","name":"no-health-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`, upstreamID)
 	upstreamFile := filepath.Join(t.TempDir(), "upstream-no-health-check.json")
 	require.NoError(t, os.WriteFile(upstreamFile, []byte(body), 0o644))
-	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "--id", upstreamID, "-f", upstreamFile)
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", upstreamFile)
 	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	_, stderr, err = runA6WithEnv(env, "upstream", "health", upstreamID,

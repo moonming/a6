@@ -97,7 +97,7 @@ func TestConsumerExport_WithLabelFilter(t *testing.T) {
 	}
 
 	c := NewCmdExport(f)
-	c.SetArgs([]string{"--label", "env", "--output", "json"})
+	c.SetArgs([]string{"--label", "env=test", "--output", "json"})
 	err := c.Execute()
 
 	require.NoError(t, err)

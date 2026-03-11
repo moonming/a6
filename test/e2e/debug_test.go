@@ -23,7 +23,8 @@ func TestDebugTrace_BasicRoute(t *testing.T) {
 	_, _, _ = runA6WithEnv(env, "route", "delete", routeID, "--force")
 	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
-	routeBody := `{
+	routeBody := fmt.Sprintf(`{
+		"id": "%s",
 		"uri": "/debug-trace-basic/*",
 		"name": "debug-trace-basic-route",
 		"methods": ["GET"],
@@ -38,11 +39,11 @@ func TestDebugTrace_BasicRoute(t *testing.T) {
 				"127.0.0.1:8080": 1
 			}
 		}
-	}`
+	}`, routeID)
 
 	routeFile := filepath.Join(t.TempDir(), "debug-trace-basic-route.json")
 	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
-	stdout, stderr, err := runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", routeFile)
 	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	stdout, stderr, err = runA6WithEnv(env, "debug", "trace", routeID, "--path", "/debug-trace-basic/get", "--output", "json")
@@ -82,7 +83,8 @@ func TestDebugTrace_WithMethodAndPath(t *testing.T) {
 	_, _, _ = runA6WithEnv(env, "route", "delete", routeID, "--force")
 	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
-	routeBody := `{
+	routeBody := fmt.Sprintf(`{
+		"id": "%s",
 		"uri": "/debug-trace-post/*",
 		"name": "debug-trace-post-route",
 		"methods": ["POST"],
@@ -97,11 +99,11 @@ func TestDebugTrace_WithMethodAndPath(t *testing.T) {
 				"127.0.0.1:8080": 1
 			}
 		}
-	}`
+	}`, routeID)
 
 	routeFile := filepath.Join(t.TempDir(), "debug-trace-post-route.json")
 	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
-	stdout, stderr, err := runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", routeFile)
 	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	stdout, stderr, err = runA6WithEnv(env,

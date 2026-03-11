@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 // Client is a thin wrapper around net/http for the APISIX Admin API.
@@ -91,7 +90,7 @@ func (c *Client) do(method, path string, query map[string]string, body interface
 		for k, v := range query {
 			q.Add(k, v)
 		}
-		req.URL.RawQuery = strings.ReplaceAll(q.Encode(), "%3A", ":")
+		req.URL.RawQuery = q.Encode()
 	}
 
 	if body != nil {

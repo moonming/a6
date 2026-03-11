@@ -78,6 +78,7 @@ func listRun(opts *Options) error {
 	if opts.Label != "" {
 		query["label"] = cmdutil.NormalizeLabel(opts.Label)
 	}
+	labelKey, labelValue := cmdutil.ParseLabel(opts.Label)
 
 	body, err := client.Get("/apisix/admin/services", query)
 	if err != nil {
@@ -89,8 +90,18 @@ func listRun(opts *Options) error {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	services := make([]api.Service, len(resp.List))
-	for i, item := range resp.List {
+	filteredList := resp.List
+	if labelValue != "" {
+		filteredList = make([]api.ListItem[api.Service], 0, len(resp.List))
+		for _, item := range resp.List {
+			if item.Value.Labels != nil && item.Value.Labels[labelKey] == labelValue {
+				filteredList = append(filteredList, item)
+			}
+		}
+	}
+
+	services := make([]api.Service, len(filteredList))
+	for i, item := range filteredList {
 		services[i] = item.Value
 	}
 

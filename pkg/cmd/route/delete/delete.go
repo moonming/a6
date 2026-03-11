@@ -168,16 +168,15 @@ func listAllRouteIDs(client *api.Client, label string) ([]string, error) {
 	page := 1
 	pageSize := 500
 	ids := make([]string, 0)
-
-	apiLabel := cmdutil.NormalizeLabel(label)
+	labelKey, labelValue := cmdutil.ParseLabel(label)
 
 	for {
 		query := map[string]string{
 			"page":      fmt.Sprintf("%d", page),
 			"page_size": fmt.Sprintf("%d", pageSize),
 		}
-		if apiLabel != "" {
-			query["label"] = apiLabel
+		if labelKey != "" {
+			query["label"] = labelKey
 		}
 
 		body, err := client.Get("/apisix/admin/routes", query)
@@ -192,6 +191,9 @@ func listAllRouteIDs(client *api.Client, label string) ([]string, error) {
 
 		for _, item := range resp.List {
 			if item.Value.ID == nil || *item.Value.ID == "" {
+				continue
+			}
+			if labelValue != "" && (item.Value.Labels == nil || item.Value.Labels[labelKey] != labelValue) {
 				continue
 			}
 			ids = append(ids, *item.Value.ID)
