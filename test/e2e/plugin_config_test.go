@@ -13,12 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deletePluginConfig(t *testing.T, id string) {
+func deletePluginConfigViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/plugin_configs/"+id, nil)
 	if err == nil {
 		resp.Body.Close()
 	}
+}
+
+func deletePluginConfigViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "plugin-config", "delete", id, "--force")
 }
 
 func setupPluginConfigEnv(t *testing.T) []string {
@@ -32,10 +37,10 @@ func setupPluginConfigEnv(t *testing.T) []string {
 func TestPluginConfig_CRUD(t *testing.T) {
 	const pluginConfigID = "test-plugin-config-1"
 
-	deletePluginConfig(t, pluginConfigID)
-	t.Cleanup(func() { deletePluginConfig(t, pluginConfigID) })
-
 	env := setupPluginConfigEnv(t)
+
+	deletePluginConfigViaCLI(t, env, pluginConfigID)
+	t.Cleanup(func() { deletePluginConfigViaAdmin(t, pluginConfigID) })
 
 	createJSON := `{
 		"id": "test-plugin-config-1",
@@ -119,10 +124,10 @@ func TestPluginConfig_GetNonExistent(t *testing.T) {
 func TestPluginConfig_JSONOutput(t *testing.T) {
 	const pluginConfigID = "test-plugin-config-json-1"
 
-	deletePluginConfig(t, pluginConfigID)
-	t.Cleanup(func() { deletePluginConfig(t, pluginConfigID) })
-
 	env := setupPluginConfigEnv(t)
+
+	deletePluginConfigViaCLI(t, env, pluginConfigID)
+	t.Cleanup(func() { deletePluginConfigViaAdmin(t, pluginConfigID) })
 
 	createJSON := `{
 		"id": "test-plugin-config-json-1",

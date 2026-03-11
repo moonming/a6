@@ -3,6 +3,8 @@
 package e2e
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,12 +28,19 @@ func TestInteractive_UpstreamHealthRequiresIDInNonTTY(t *testing.T) {
 
 func TestInteractive_ExplicitIDStillWorks(t *testing.T) {
 	const routeID = "test-interactive-explicit-id"
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-	createTestRoute(t, routeID, "interactive-explicit", "/interactive-explicit")
 
 	env := setupRouteEnv(t)
-	stdout, stderr, err := runA6WithEnv(env, "route", "get", routeID)
+
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
+
+	routeJSON := `{"id":"test-interactive-explicit-id","name":"interactive-explicit","uri":"/interactive-explicit","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`
+	tmpFile := filepath.Join(t.TempDir(), "route.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(routeJSON), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", tmpFile)
+	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
+
+	stdout, stderr, err = runA6WithEnv(env, "route", "get", routeID)
 	require.NoError(t, err, "route get with explicit ID failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.Contains(t, stdout, "interactive-explicit")
 }

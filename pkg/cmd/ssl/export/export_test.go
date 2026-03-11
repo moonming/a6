@@ -70,10 +70,16 @@ func TestSSLExport_BasicYAML(t *testing.T) {
 }
 
 func TestSSLExport_WithLabelFilter(t *testing.T) {
-	calledWithLabel := ""
+	calledWithNormalizedLabel := false
+	rawQueryContainsUnescapedColon := false
 	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		if req.Method == http.MethodGet && req.URL.Path == "/apisix/admin/ssls" {
-			calledWithLabel = req.URL.Query().Get("label")
+			if req.URL.Query().Get("label") == "env:test" {
+				calledWithNormalizedLabel = true
+			}
+			if strings.Contains(req.URL.RawQuery, "label=env:test") {
+				rawQueryContainsUnescapedColon = true
+			}
 			return &http.Response{
 				StatusCode: 200,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -99,7 +105,8 @@ func TestSSLExport_WithLabelFilter(t *testing.T) {
 	err := c.Execute()
 
 	require.NoError(t, err)
-	assert.Equal(t, "env=test", calledWithLabel, "should pass full label to API query")
+	assert.True(t, calledWithNormalizedLabel, "should send normalized label key:value to API")
+	assert.True(t, rawQueryContainsUnescapedColon, "colon in label value must not be percent-encoded in raw URL")
 	out := stdout.String()
 	assert.Contains(t, out, "example.com")
 }

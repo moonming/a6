@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deletePluginMetadata(t *testing.T, pluginName string) {
+func deletePluginMetadataViaAdmin(t *testing.T, pluginName string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/plugin_metadata/"+pluginName, nil)
 	if err == nil {
@@ -32,10 +32,10 @@ func setupPluginMetadataEnv(t *testing.T) []string {
 func TestPluginMetadata_CRUD(t *testing.T) {
 	const pluginName = "syslog"
 
-	deletePluginMetadata(t, pluginName)
-	t.Cleanup(func() { deletePluginMetadata(t, pluginName) })
-
 	env := setupPluginMetadataEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "plugin-metadata", "delete", pluginName, "--force")
+	t.Cleanup(func() { deletePluginMetadataViaAdmin(t, pluginName) })
 
 	createJSON := `{
 		"log_format": {
@@ -91,10 +91,10 @@ func TestPluginMetadata_GetNonExistent(t *testing.T) {
 func TestPluginMetadata_JSONOutput(t *testing.T) {
 	const pluginName = "syslog"
 
-	deletePluginMetadata(t, pluginName)
-	t.Cleanup(func() { deletePluginMetadata(t, pluginName) })
-
 	env := setupPluginMetadataEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "plugin-metadata", "delete", pluginName, "--force")
+	t.Cleanup(func() { deletePluginMetadataViaAdmin(t, pluginName) })
 
 	createJSON := `{
 		"log_format": {

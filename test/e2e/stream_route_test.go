@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteStreamRoute(t *testing.T, id string) {
+func deleteStreamRouteViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/stream_routes/"+id, nil)
 	if err == nil {
@@ -32,10 +32,10 @@ func setupStreamRouteEnv(t *testing.T) []string {
 func TestStreamRoute_CRUD(t *testing.T) {
 	const streamRouteID = "test-stream-route-crud-1"
 
-	deleteStreamRoute(t, streamRouteID)
-	t.Cleanup(func() { deleteStreamRoute(t, streamRouteID) })
-
 	env := setupStreamRouteEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "stream-route", "delete", streamRouteID, "--force")
+	t.Cleanup(func() { deleteStreamRouteViaAdmin(t, streamRouteID) })
 
 	createJSON := `{
 	"id": "test-stream-route-crud-1",
@@ -129,22 +129,24 @@ func TestStreamRoute_DeleteNonExistent(t *testing.T) {
 func TestStreamRoute_JSONOutput(t *testing.T) {
 	const streamRouteID = "test-stream-route-json-out"
 
-	deleteStreamRoute(t, streamRouteID)
-	t.Cleanup(func() { deleteStreamRoute(t, streamRouteID) })
+	env := setupStreamRouteEnv(t)
 
-	body := `{
+	_, _, _ = runA6WithEnv(env, "stream-route", "delete", streamRouteID, "--force")
+	t.Cleanup(func() { deleteStreamRouteViaAdmin(t, streamRouteID) })
+
+	createJSON := `{
+	"id":"test-stream-route-json-out",
 	"name":"json-stream-route",
 	"server_port":9300,
 	"upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}
 }`
-	resp, err := adminAPI("PUT", "/apisix/admin/stream_routes/"+streamRouteID, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	createFile := filepath.Join(t.TempDir(), "stream-route-json-create.json")
+	require.NoError(t, os.WriteFile(createFile, []byte(createJSON), 0o644))
 
-	env := setupStreamRouteEnv(t)
+	stdout, stderr, err := runA6WithEnv(env, "stream-route", "create", "-f", createFile)
+	require.NoError(t, err, "stream-route create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	stdout, stderr, err := runA6WithEnv(env, "stream-route", "list", "--output", "json")
+	stdout, stderr, err = runA6WithEnv(env, "stream-route", "list", "--output", "json")
 	require.NoError(t, err, "stream-route list --output json failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.True(t, json.Valid([]byte(stdout)), "list --output json should produce valid JSON, got: %s", stdout)
 	assert.Contains(t, stdout, "json-stream-route")

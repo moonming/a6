@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteSSL(t *testing.T, id string) {
+func deleteSSLViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/ssls/"+id, nil)
 	if err == nil {
@@ -45,10 +45,10 @@ func readTestCert(t *testing.T) (string, string) {
 func TestSSL_CRUD(t *testing.T) {
 	const sslID = "test-ssl-crud-1"
 
-	deleteSSL(t, sslID)
-	t.Cleanup(func() { deleteSSL(t, sslID) })
-
 	env := setupSSLEnv(t)
+	_, _, _ = runA6WithEnv(env, "ssl", "delete", sslID, "--force")
+	t.Cleanup(func() { deleteSSLViaAdmin(t, sslID) })
+
 	cert, key := readTestCert(t)
 
 	// Escape newlines for JSON embedding
@@ -110,10 +110,10 @@ func TestSSL_CRUD(t *testing.T) {
 func TestSSL_CreateFromFile(t *testing.T) {
 	const sslID = "test-ssl-fromfile-1"
 
-	deleteSSL(t, sslID)
-	t.Cleanup(func() { deleteSSL(t, sslID) })
-
 	env := setupSSLEnv(t)
+	_, _, _ = runA6WithEnv(env, "ssl", "delete", sslID, "--force")
+	t.Cleanup(func() { deleteSSLViaAdmin(t, sslID) })
+
 	cert, key := readTestCert(t)
 
 	certJSON := strings.ReplaceAll(cert, "\n", "\\n")
@@ -142,24 +142,30 @@ func TestSSL_CreateFromFile(t *testing.T) {
 func TestSSL_ListWithStatus(t *testing.T) {
 	const sslID = "test-ssl-liststatus-1"
 
-	deleteSSL(t, sslID)
-	t.Cleanup(func() { deleteSSL(t, sslID) })
-
 	env := setupSSLEnv(t)
+	_, _, _ = runA6WithEnv(env, "ssl", "delete", sslID, "--force")
+	t.Cleanup(func() { deleteSSLViaAdmin(t, sslID) })
+
 	cert, key := readTestCert(t)
 
 	certJSON := strings.ReplaceAll(cert, "\n", "\\n")
 	keyJSON := strings.ReplaceAll(key, "\n", "\\n")
 
-	// Create SSL with status=1 (enabled) via Admin API
-	body := `{"cert":"` + certJSON + `","key":"` + keyJSON + `","snis":["status-test.example.com"],"status":1}`
-	resp, err := adminAPI("PUT", "/apisix/admin/ssls/"+sslID, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test SSL")
+	sslJSON := `{
+	"id": "` + sslID + `",
+	"cert": "` + certJSON + `",
+	"key": "` + keyJSON + `",
+	"snis": ["status-test.example.com"],
+	"status": 1
+}`
+	tmpFile := filepath.Join(t.TempDir(), "ssl-status.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(sslJSON), 0o644))
+
+	stdout, stderr, err := runA6WithEnv(env, "ssl", "create", "-f", tmpFile)
+	require.NoError(t, err, "ssl create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	// List with JSON output and verify status field
-	stdout, stderr, err := runA6WithEnv(env, "ssl", "list", "--output", "json")
+	stdout, stderr, err = runA6WithEnv(env, "ssl", "list", "--output", "json")
 	require.NoError(t, err, "ssl list failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.Contains(t, stdout, `"status": 1`, "list should show status value")
 	assert.Contains(t, stdout, "status-test.example.com", "list should contain the SNI")
@@ -168,24 +174,29 @@ func TestSSL_ListWithStatus(t *testing.T) {
 func TestSSL_GetShowsSNI(t *testing.T) {
 	const sslID = "test-ssl-getsni-1"
 
-	deleteSSL(t, sslID)
-	t.Cleanup(func() { deleteSSL(t, sslID) })
-
 	env := setupSSLEnv(t)
+	_, _, _ = runA6WithEnv(env, "ssl", "delete", sslID, "--force")
+	t.Cleanup(func() { deleteSSLViaAdmin(t, sslID) })
+
 	cert, key := readTestCert(t)
 
 	certJSON := strings.ReplaceAll(cert, "\n", "\\n")
 	keyJSON := strings.ReplaceAll(key, "\n", "\\n")
 
-	// Create SSL with multiple SNIs via Admin API
-	body := `{"cert":"` + certJSON + `","key":"` + keyJSON + `","snis":["sni1.example.com","sni2.example.com"]}`
-	resp, err := adminAPI("PUT", "/apisix/admin/ssls/"+sslID, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test SSL")
+	sslJSON := `{
+	"id": "` + sslID + `",
+	"cert": "` + certJSON + `",
+	"key": "` + keyJSON + `",
+	"snis": ["sni1.example.com", "sni2.example.com"]
+}`
+	tmpFile := filepath.Join(t.TempDir(), "ssl-sni.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(sslJSON), 0o644))
+
+	stdout, stderr, err := runA6WithEnv(env, "ssl", "create", "-f", tmpFile)
+	require.NoError(t, err, "ssl create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	// Get in YAML and verify SNIs present
-	stdout, stderr, err := runA6WithEnv(env, "ssl", "get", sslID)
+	stdout, stderr, err = runA6WithEnv(env, "ssl", "get", sslID)
 	require.NoError(t, err, "ssl get failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.Contains(t, stdout, "sni1.example.com", "get should contain first SNI")
 	assert.Contains(t, stdout, "sni2.example.com", "get should contain second SNI")

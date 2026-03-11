@@ -13,12 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteConfigSyncUpstream(t *testing.T, id string) {
+func deleteConfigSyncUpstreamViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/upstreams/"+id, nil)
 	if err == nil {
 		resp.Body.Close()
 	}
+}
+
+func deleteConfigSyncUpstreamViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "upstream", "delete", id, "--force")
+}
+
+func deleteConfigSyncRouteViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "route", "delete", id, "--force")
 }
 
 func TestConfig_SyncAndDiff(t *testing.T) {
@@ -27,14 +37,14 @@ func TestConfig_SyncAndDiff(t *testing.T) {
 		upstreamID = "test-sync-upstream-1"
 	)
 
-	deleteRoute(t, routeID)
-	deleteConfigSyncUpstream(t, upstreamID)
-	t.Cleanup(func() {
-		deleteRoute(t, routeID)
-		deleteConfigSyncUpstream(t, upstreamID)
-	})
-
 	env := setupRouteEnv(t)
+
+	deleteConfigSyncRouteViaCLI(t, env, routeID)
+	deleteConfigSyncUpstreamViaCLI(t, env, upstreamID)
+	t.Cleanup(func() {
+		deleteRouteViaAdmin(t, routeID)
+		deleteConfigSyncUpstreamViaAdmin(t, upstreamID)
+	})
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
 
 	require.NoError(t, os.WriteFile(configPath, []byte(`
@@ -117,10 +127,10 @@ routes:
 func TestConfig_SyncDryRun(t *testing.T) {
 	const routeID = "test-sync-dry-run-route-1"
 
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
 	env := setupRouteEnv(t)
+
+	deleteConfigSyncRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
 	require.NoError(t, os.WriteFile(configPath, []byte(`
 version: "1"

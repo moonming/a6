@@ -5,6 +5,8 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,8 +17,11 @@ import (
 func TestDebugTrace_BasicRoute(t *testing.T) {
 	const routeID = "test-debug-trace-basic"
 
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
+	env := setupRouteEnv(t)
+	env = append(env, "APISIX_GATEWAY_URL="+gatewayURL)
+
+	_, _, _ = runA6WithEnv(env, "route", "delete", routeID, "--force")
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
 	routeBody := `{
 		"uri": "/debug-trace-basic/*",
@@ -35,15 +40,12 @@ func TestDebugTrace_BasicRoute(t *testing.T) {
 		}
 	}`
 
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	routeFile := filepath.Join(t.TempDir(), "debug-trace-basic-route.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	env := setupRouteEnv(t)
-	env = append(env, "APISIX_GATEWAY_URL="+gatewayURL)
-
-	stdout, stderr, err := runA6WithEnv(env, "debug", "trace", routeID, "--path", "/debug-trace-basic/get", "--output", "json")
+	stdout, stderr, err = runA6WithEnv(env, "debug", "trace", routeID, "--path", "/debug-trace-basic/get", "--output", "json")
 	require.NoError(t, err, "debug trace failed: stdout=%s stderr=%s", stdout, stderr)
 
 	var got map[string]interface{}
@@ -74,8 +76,11 @@ func TestDebugTrace_NonExistentRoute(t *testing.T) {
 func TestDebugTrace_WithMethodAndPath(t *testing.T) {
 	const routeID = "test-debug-trace-post"
 
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
+	env := setupRouteEnv(t)
+	env = append(env, "APISIX_GATEWAY_URL="+gatewayURL)
+
+	_, _, _ = runA6WithEnv(env, "route", "delete", routeID, "--force")
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
 	routeBody := `{
 		"uri": "/debug-trace-post/*",
@@ -94,15 +99,12 @@ func TestDebugTrace_WithMethodAndPath(t *testing.T) {
 		}
 	}`
 
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	routeFile := filepath.Join(t.TempDir(), "debug-trace-post-route.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	env := setupRouteEnv(t)
-	env = append(env, "APISIX_GATEWAY_URL="+gatewayURL)
-
-	stdout, stderr, err := runA6WithEnv(env,
+	stdout, stderr, err = runA6WithEnv(env,
 		"debug", "trace", routeID,
 		"--method", "POST",
 		"--path", "/debug-trace-post/post",

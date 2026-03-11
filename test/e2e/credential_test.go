@@ -21,7 +21,7 @@ func setupCredentialEnv(t *testing.T) []string {
 	return env
 }
 
-func deleteCredential(t *testing.T, consumer, id string) {
+func deleteCredentialViaAdmin(t *testing.T, consumer, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/consumers/"+consumer+"/credentials/"+id, nil)
 	if err == nil {
@@ -29,7 +29,7 @@ func deleteCredential(t *testing.T, consumer, id string) {
 	}
 }
 
-func deleteConsumerByAPI(t *testing.T, username string) {
+func deleteCredTestConsumerViaAdmin(t *testing.T, username string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/consumers/"+username, nil)
 	if err == nil {
@@ -43,15 +43,24 @@ func TestCredential_CRUD(t *testing.T) {
 		credID   = "cred-1"
 	)
 
-	deleteCredential(t, consumer, credID)
-	deleteConsumerByAPI(t, consumer)
+	env := setupCredentialEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "credential", "delete", credID, "--consumer", consumer, "--force")
+	_, _, _ = runA6WithEnv(env, "consumer", "delete", consumer, "--force")
 	t.Cleanup(func() {
-		deleteCredential(t, consumer, credID)
-		deleteConsumerByAPI(t, consumer)
+		deleteCredentialViaAdmin(t, consumer, credID)
+		deleteCredTestConsumerViaAdmin(t, consumer)
 	})
 
-	createTestConsumer(t, consumer)
-	env := setupCredentialEnv(t)
+	consumerJSON := `{
+		"username": "test-cred-consumer",
+		"desc": "test consumer"
+	}`
+	consumerFile := filepath.Join(t.TempDir(), "credential-consumer-create.json")
+	require.NoError(t, os.WriteFile(consumerFile, []byte(consumerJSON), 0o644))
+
+	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", consumerFile)
+	require.NoError(t, err, "consumer create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	createJSON := `{
 		"id": "cred-1",
@@ -64,7 +73,7 @@ func TestCredential_CRUD(t *testing.T) {
 	createFile := filepath.Join(t.TempDir(), "credential-create.json")
 	require.NoError(t, os.WriteFile(createFile, []byte(createJSON), 0o644))
 
-	stdout, stderr, err := runA6WithEnv(env, "credential", "create", "--consumer", consumer, "-f", createFile)
+	stdout, stderr, err = runA6WithEnv(env, "credential", "create", "--consumer", consumer, "-f", createFile)
 	require.NoError(t, err, "credential create failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.Contains(t, stdout+stderr, credID)
 
@@ -98,13 +107,22 @@ func TestCredential_CRUD(t *testing.T) {
 func TestCredential_GetNonExistent(t *testing.T) {
 	const consumer = "test-cred-nonexistent-consumer"
 
-	deleteConsumerByAPI(t, consumer)
-	t.Cleanup(func() { deleteConsumerByAPI(t, consumer) })
-
-	createTestConsumer(t, consumer)
 	env := setupCredentialEnv(t)
 
-	_, stderr, err := runA6WithEnv(env, "credential", "get", "nonexistent-cred-999", "--consumer", consumer)
+	_, _, _ = runA6WithEnv(env, "consumer", "delete", consumer, "--force")
+	t.Cleanup(func() { deleteCredTestConsumerViaAdmin(t, consumer) })
+
+	consumerJSON := `{
+		"username": "test-cred-nonexistent-consumer",
+		"desc": "test consumer"
+	}`
+	consumerFile := filepath.Join(t.TempDir(), "credential-nonexistent-consumer-create.json")
+	require.NoError(t, os.WriteFile(consumerFile, []byte(consumerJSON), 0o644))
+
+	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", consumerFile)
+	require.NoError(t, err, "consumer create failed: stdout=%s stderr=%s", stdout, stderr)
+
+	_, stderr, err = runA6WithEnv(env, "credential", "get", "nonexistent-cred-999", "--consumer", consumer)
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(stderr, "not found") || strings.Contains(stderr, "404"),
 		"error should indicate not found, got: %s", stderr)
@@ -116,15 +134,24 @@ func TestCredential_JSONOutput(t *testing.T) {
 		credID   = "cred-1"
 	)
 
-	deleteCredential(t, consumer, credID)
-	deleteConsumerByAPI(t, consumer)
+	env := setupCredentialEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "credential", "delete", credID, "--consumer", consumer, "--force")
+	_, _, _ = runA6WithEnv(env, "consumer", "delete", consumer, "--force")
 	t.Cleanup(func() {
-		deleteCredential(t, consumer, credID)
-		deleteConsumerByAPI(t, consumer)
+		deleteCredentialViaAdmin(t, consumer, credID)
+		deleteCredTestConsumerViaAdmin(t, consumer)
 	})
 
-	createTestConsumer(t, consumer)
-	env := setupCredentialEnv(t)
+	consumerJSON := `{
+		"username": "test-cred-json-consumer",
+		"desc": "test consumer"
+	}`
+	consumerFile := filepath.Join(t.TempDir(), "credential-json-consumer-create.json")
+	require.NoError(t, os.WriteFile(consumerFile, []byte(consumerJSON), 0o644))
+
+	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", consumerFile)
+	require.NoError(t, err, "consumer create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	createJSON := `{
 		"id": "cred-1",
@@ -137,7 +164,7 @@ func TestCredential_JSONOutput(t *testing.T) {
 	createFile := filepath.Join(t.TempDir(), "credential-json-create.json")
 	require.NoError(t, os.WriteFile(createFile, []byte(createJSON), 0o644))
 
-	stdout, stderr, err := runA6WithEnv(env, "credential", "create", "--consumer", consumer, "-f", createFile)
+	stdout, stderr, err = runA6WithEnv(env, "credential", "create", "--consumer", consumer, "-f", createFile)
 	require.NoError(t, err, "credential create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	stdout, stderr, err = runA6WithEnv(env, "credential", "get", credID, "--consumer", consumer, "--output", "json")

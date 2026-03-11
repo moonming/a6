@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteProto(t *testing.T, id string) {
+func deleteProtoViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/protos/"+id, nil)
 	if err == nil {
@@ -32,10 +32,9 @@ func setupProtoEnv(t *testing.T) []string {
 func TestProto_CRUD(t *testing.T) {
 	const protoID = "test-proto-crud-1"
 
-	deleteProto(t, protoID)
-	t.Cleanup(func() { deleteProto(t, protoID) })
-
 	env := setupProtoEnv(t)
+	_, _, _ = runA6WithEnv(env, "proto", "delete", protoID, "--force")
+	t.Cleanup(func() { deleteProtoViaAdmin(t, protoID) })
 
 	createJSON := `{
 	"id": "test-proto-crud-1",
@@ -119,21 +118,23 @@ func TestProto_DeleteNonExistent(t *testing.T) {
 func TestProto_JSONOutput(t *testing.T) {
 	const protoID = "test-proto-json-out"
 
-	deleteProto(t, protoID)
-	t.Cleanup(func() { deleteProto(t, protoID) })
+	env := setupProtoEnv(t)
+	_, _, _ = runA6WithEnv(env, "proto", "delete", protoID, "--force")
+	t.Cleanup(func() { deleteProtoViaAdmin(t, protoID) })
 
-	resp, err := adminAPI("PUT", "/apisix/admin/protos/"+protoID, []byte(`{
+	createJSON := `{
+	"id": "` + protoID + `",
 	"name":"json-output-proto",
 	"desc":"proto for json output test",
 	"content":"syntax = \"proto3\";\npackage jsonout;\nmessage Ping { string message = 1; }"
-}`))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+}`
+	createFile := filepath.Join(t.TempDir(), "proto-json-output.json")
+	require.NoError(t, os.WriteFile(createFile, []byte(createJSON), 0o644))
 
-	env := setupProtoEnv(t)
+	stdout, stderr, err := runA6WithEnv(env, "proto", "create", "-f", createFile)
+	require.NoError(t, err, "proto create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	stdout, stderr, err := runA6WithEnv(env, "proto", "list", "--output", "json")
+	stdout, stderr, err = runA6WithEnv(env, "proto", "list", "--output", "json")
 	require.NoError(t, err, "proto list --output json failed: stdout=%s stderr=%s", stdout, stderr)
 	assert.True(t, json.Valid([]byte(stdout)), "list --output json should be valid JSON, got: %s", stdout)
 	assert.Contains(t, stdout, "json-output-proto")

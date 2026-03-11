@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,14 +21,14 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 		routeID    = "test-route-health-1"
 	)
 
-	deleteRoute(t, routeID)
-	deleteUpstream(t, upstreamID)
-	t.Cleanup(func() {
-		deleteRoute(t, routeID)
-		deleteUpstream(t, upstreamID)
-	})
-
 	env := setupUpstreamEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "route", "delete", routeID, "--force")
+	_, _, _ = runA6WithEnv(env, "upstream", "delete", upstreamID, "--force")
+	t.Cleanup(func() {
+		deleteRouteViaAdmin(t, routeID)
+		deleteUpstreamViaAdmin(t, upstreamID)
+	})
 
 	upstreamBody := `{
 		"name": "health-test-upstream",
@@ -47,10 +49,10 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 			}
 		}
 	}`
-	resp, err := adminAPI("PUT", "/apisix/admin/upstreams/"+upstreamID, []byte(upstreamBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	upstreamFile := filepath.Join(t.TempDir(), "upstream-health-check.json")
+	require.NoError(t, os.WriteFile(upstreamFile, []byte(upstreamBody), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "--id", upstreamID, "-f", upstreamFile)
+	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	routeBody := fmt.Sprintf(`{
 		"uri": "/test-health/*",
@@ -62,10 +64,10 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 			}
 		}
 	}`, upstreamID)
-	resp, err = adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	routeFile := filepath.Join(t.TempDir(), "route-health-check.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0o644))
+	stdout, stderr, err = runA6WithEnv(env, "route", "create", "--id", routeID, "-f", routeFile)
+	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	time.Sleep(3 * time.Second)
 	for i := 0; i < 5; i++ {
@@ -78,7 +80,7 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 
 	time.Sleep(3 * time.Second)
 
-	stdout, stderr, err := runA6WithEnv(env, "upstream", "health", upstreamID,
+	stdout, stderr, err = runA6WithEnv(env, "upstream", "health", upstreamID,
 		"--control-url", controlURL, "--output", "json")
 	require.NoError(t, err, "upstream health failed: stdout=%s stderr=%s", stdout, stderr)
 
@@ -97,18 +99,18 @@ func TestUpstreamHealth_WithHealthCheck(t *testing.T) {
 func TestUpstreamHealth_NoHealthCheck(t *testing.T) {
 	const upstreamID = "test-upstream-no-health-1"
 
-	deleteUpstream(t, upstreamID)
-	t.Cleanup(func() { deleteUpstream(t, upstreamID) })
-
-	body := `{"name":"no-health-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`
-	resp, err := adminAPI("PUT", "/apisix/admin/upstreams/"+upstreamID, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
-
 	env := setupUpstreamEnv(t)
 
-	_, stderr, err := runA6WithEnv(env, "upstream", "health", upstreamID,
+	_, _, _ = runA6WithEnv(env, "upstream", "delete", upstreamID, "--force")
+	t.Cleanup(func() { deleteUpstreamViaAdmin(t, upstreamID) })
+
+	body := `{"name":"no-health-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`
+	upstreamFile := filepath.Join(t.TempDir(), "upstream-no-health-check.json")
+	require.NoError(t, os.WriteFile(upstreamFile, []byte(body), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "--id", upstreamID, "-f", upstreamFile)
+	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
+
+	_, stderr, err = runA6WithEnv(env, "upstream", "health", upstreamID,
 		"--control-url", controlURL)
 	assert.Error(t, err, "should fail when no health check configured")
 	assert.Contains(t, stderr, "health check", "error should mention health check")

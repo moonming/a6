@@ -19,23 +19,40 @@ Built with an **AI-first development approach** — the codebase includes struct
 - **Export** — Export resource configurations to standalone YAML or JSON (`a6 route export`, `a6 upstream export --label env=prod`)
 - **AI agent skills** — 40 built-in [SKILL.md files](skills/) for AI coding agents to work effectively with APISIX
 
+## Installation
+
+### Using Go
+
+If you have Go 1.22+ installed:
+
+```bash
+go install github.com/api7/a6/cmd/a6@latest
+```
+
+This installs the `a6` binary to your `$GOPATH/bin` (or `$HOME/go/bin` by default). Make sure it's in your `PATH`.
+
+### Build from Source
+
+```bash
+git clone https://github.com/api7/a6.git
+cd a6
+make build
+# Binary is at ./bin/a6
+```
+
 ## Quick Start
 
 This walkthrough takes about 5 minutes and exercises most a6 features against a local APISIX instance.
 
 ### Prerequisites
 
-- [Go 1.22+](https://go.dev/dl/)
+- a6 installed (see [Installation](#installation) above)
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose
 
-### 1. Build a6 and start APISIX
+### 1. Start APISIX
 
 ```bash
-git clone https://github.com/api7/a6.git
-cd a6
-make build
-
-# Start APISIX + etcd + httpbin
+# If you built from source, start APISIX from the repo directory:
 docker compose -f test/e2e/docker-compose.yml up -d
 
 # Wait ~10 seconds for APISIX to be ready, then verify
@@ -46,13 +63,13 @@ curl -s http://localhost:9180/apisix/admin/routes -H 'X-API-KEY: edd1c9f034335f1
 
 ```bash
 # Create a context pointing to the local APISIX instance
-./bin/a6 context create local --server http://localhost:9180 --api-key edd1c9f034335f136f87ad84b625c8f1
+a6 context create local --server http://localhost:9180 --api-key edd1c9f034335f136f87ad84b625c8f1
 
 # Verify the active context
-./bin/a6 context current
+a6 context current
 
 # List all contexts
-./bin/a6 context list
+a6 context list
 ```
 
 ### 3. Create resources
@@ -67,7 +84,7 @@ cat <<'EOF' > /tmp/upstream.json
   "nodes": {"httpbin:8080": 1}
 }
 EOF
-./bin/a6 upstream create -f /tmp/upstream.json
+a6 upstream create -f /tmp/upstream.json
 
 # Create a route that references the upstream
 cat <<'EOF' > /tmp/route.json
@@ -80,23 +97,23 @@ cat <<'EOF' > /tmp/route.json
   "labels": {"env": "test", "team": "backend"}
 }
 EOF
-./bin/a6 route create -f /tmp/route.json
+a6 route create -f /tmp/route.json
 ```
 
 ### 4. Read and explore
 
 ```bash
 # List all routes (table output in terminal)
-./bin/a6 route list
+a6 route list
 
 # Get a specific route in JSON
-./bin/a6 route get test-route --output json
+a6 route get test-route --output json
 
 # Get it in YAML
-./bin/a6 route get test-route --output yaml
+a6 route get test-route --output yaml
 
 # List available plugins
-./bin/a6 plugin list
+a6 plugin list
 ```
 
 ### 5. Update a resource
@@ -113,38 +130,38 @@ cat <<'EOF' > /tmp/route-update.json
   "labels": {"env": "test", "team": "backend"}
 }
 EOF
-./bin/a6 route update test-route -f /tmp/route-update.json
+a6 route update test-route -f /tmp/route-update.json
 ```
 
 ### 6. Export and declarative config
 
 ```bash
 # Export all routes to YAML
-./bin/a6 route export
+a6 route export
 
 # Export routes with a label filter
-./bin/a6 route export --label env=test
+a6 route export --label env=test
 
 # Dump the entire APISIX configuration to a YAML file
-./bin/a6 config dump -f /tmp/apisix-dump.yaml
+a6 config dump -f /tmp/apisix-dump.yaml
 
 # Validate a config file
-./bin/a6 config validate -f /tmp/apisix-dump.yaml
+a6 config validate -f /tmp/apisix-dump.yaml
 
 # Preview what a sync would change (dry run)
-./bin/a6 config sync -f /tmp/apisix-dump.yaml --dry-run
+a6 config sync -f /tmp/apisix-dump.yaml --dry-run
 ```
 
 ### 7. Clean up
 
 ```bash
 # Delete the route and upstream
-./bin/a6 route delete test-route
-./bin/a6 upstream delete httpbin
+a6 route delete test-route
+a6 upstream delete httpbin
 
 # Verify they're gone
-./bin/a6 route list
-./bin/a6 upstream list
+a6 route list
+a6 upstream list
 
 # Stop the local APISIX stack
 docker compose -f test/e2e/docker-compose.yml down

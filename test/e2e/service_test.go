@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteService(t *testing.T, id string) {
+func deleteServiceViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/services/"+id, nil)
 	if err == nil {
@@ -24,13 +24,19 @@ func deleteService(t *testing.T, id string) {
 	}
 }
 
-func createTestService(t *testing.T, id, name string) {
+func deleteServiceViaCLI(t *testing.T, env []string, id string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"name":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`, name)
-	resp, err := adminAPI("PUT", "/apisix/admin/services/"+id, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test service")
+	_, _, _ = runA6WithEnv(env, "service", "delete", id, "--force")
+}
+
+func createTestServiceViaCLI(t *testing.T, env []string, id, name string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"id":"%s","name":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`, id, name)
+	tmpFile := filepath.Join(t.TempDir(), id+".json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(body), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "service", "create", "-f", tmpFile)
+	require.NoError(t, err, "failed to create test service %s: stdout=%s stderr=%s", id, stdout, stderr)
 }
 
 func setupServiceEnv(t *testing.T) []string {
@@ -46,11 +52,10 @@ func setupServiceEnv(t *testing.T) []string {
 
 func TestService_CRUD(t *testing.T) {
 	const serviceID = "test-svc-crud-1"
-
-	deleteService(t, serviceID)
-	t.Cleanup(func() { deleteService(t, serviceID) })
-
 	env := setupServiceEnv(t)
+
+	deleteServiceViaCLI(t, env, serviceID)
+	t.Cleanup(func() { deleteServiceViaAdmin(t, serviceID) })
 
 	// 1. Create
 	serviceJSON := `{
@@ -114,11 +119,10 @@ func TestService_CRUD(t *testing.T) {
 
 func TestService_WithUpstream(t *testing.T) {
 	const serviceID = "test-svc-upstream-1"
-
-	deleteService(t, serviceID)
-	t.Cleanup(func() { deleteService(t, serviceID) })
-
 	env := setupServiceEnv(t)
+
+	deleteServiceViaCLI(t, env, serviceID)
+	t.Cleanup(func() { deleteServiceViaAdmin(t, serviceID) })
 
 	serviceJSON := `{
 	"id": "test-svc-upstream-1",
@@ -154,15 +158,14 @@ func TestService_RouteWithServiceID(t *testing.T) {
 		serviceID = "test-svc-route-ref"
 		routeID   = "test-route-svc-ref"
 	)
-
-	deleteRoute(t, routeID)
-	deleteService(t, serviceID)
-	t.Cleanup(func() {
-		deleteRoute(t, routeID)
-		deleteService(t, serviceID)
-	})
-
 	env := setupServiceEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	deleteServiceViaCLI(t, env, serviceID)
+	t.Cleanup(func() {
+		deleteRouteViaAdmin(t, routeID)
+		deleteServiceViaAdmin(t, serviceID)
+	})
 
 	// Create service via a6
 	serviceJSON := fmt.Sprintf(`{
@@ -181,13 +184,12 @@ func TestService_RouteWithServiceID(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "service", "create", "-f", tmpFile)
 	require.NoError(t, err, "service create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// Create route with service_id via Admin API.
-	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-svc-route/get.
-	routeBody := fmt.Sprintf(`{"uri":"/test-svc-route/*","name":"svc-ref-route","service_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-svc-route/(.*)","/$1"]}}}`, serviceID)
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create route with service_id")
+	routeBody := fmt.Sprintf(`{"id":"%s","uri":"/test-svc-route/*","name":"svc-ref-route","service_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-svc-route/(.*)","/$1"]}}}`, routeID, serviceID)
+	routeFile := filepath.Join(t.TempDir(), "route-with-service-id.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0644))
+
+	stdout, stderr, err = runA6WithEnv(env, "route", "create", "-f", routeFile)
+	require.NoError(t, err, "failed to create route with service_id: stdout=%s stderr=%s", stdout, stderr)
 
 	var gwResp *http.Response
 	for i := 0; i < 10; i++ {
@@ -214,13 +216,12 @@ func TestService_DeleteNonExistent(t *testing.T) {
 
 func TestService_JSONOutput(t *testing.T) {
 	const serviceID = "test-svc-json-out"
-
-	deleteService(t, serviceID)
-	t.Cleanup(func() { deleteService(t, serviceID) })
-
-	createTestService(t, serviceID, "json-output-service")
-
 	env := setupServiceEnv(t)
+
+	deleteServiceViaCLI(t, env, serviceID)
+	t.Cleanup(func() { deleteServiceViaAdmin(t, serviceID) })
+
+	createTestServiceViaCLI(t, env, serviceID, "json-output-service")
 
 	stdout, stderr, err := runA6WithEnv(env, "service", "list", "--output", "json")
 	require.NoError(t, err, "service list --output json failed: stdout=%s stderr=%s", stdout, stderr)

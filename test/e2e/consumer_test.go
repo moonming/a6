@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteConsumer(t *testing.T, username string) {
+func deleteConsumerViaAdmin(t *testing.T, username string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/consumers/"+username, nil)
 	if err == nil {
@@ -23,13 +23,18 @@ func deleteConsumer(t *testing.T, username string) {
 	}
 }
 
-func createTestConsumer(t *testing.T, username string) {
+func deleteConsumerViaCLI(t *testing.T, env []string, username string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"username":"%s","desc":"test consumer"}`, username)
-	resp, err := adminAPI("PUT", "/apisix/admin/consumers", []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test consumer")
+	_, _, _ = runA6WithEnv(env, "consumer", "delete", username, "--force")
+}
+
+func createConsumerViaCLI(t *testing.T, env []string, username, consumerJSON string) {
+	t.Helper()
+	tmpFile := filepath.Join(t.TempDir(), username+".json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(consumerJSON), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", tmpFile)
+	require.NoError(t, err, "failed to create consumer %s: stdout=%s stderr=%s", username, stdout, stderr)
 }
 
 func setupConsumerEnv(t *testing.T) []string {
@@ -45,11 +50,10 @@ func setupConsumerEnv(t *testing.T) []string {
 
 func TestConsumer_CRUD(t *testing.T) {
 	const username = "test-consumer-crud"
-
-	deleteConsumer(t, username)
-	t.Cleanup(func() { deleteConsumer(t, username) })
-
 	env := setupConsumerEnv(t)
+
+	deleteConsumerViaCLI(t, env, username)
+	t.Cleanup(func() { deleteConsumerViaAdmin(t, username) })
 
 	// 1. Create
 	consumerJSON := `{
@@ -117,15 +121,14 @@ func TestConsumer_WithKeyAuth(t *testing.T) {
 		username = "test-key-auth-user"
 		routeID  = "test-consumer-auth-route"
 	)
-
-	deleteConsumer(t, username)
-	deleteRoute(t, routeID)
-	t.Cleanup(func() {
-		deleteRoute(t, routeID)
-		deleteConsumer(t, username)
-	})
-
 	env := setupConsumerEnv(t)
+
+	deleteConsumerViaCLI(t, env, username)
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() {
+		deleteRouteViaAdmin(t, routeID)
+		deleteConsumerViaAdmin(t, username)
+	})
 
 	// 1. Create consumer with key-auth plugin via CLI
 	consumerJSON := `{
@@ -142,9 +145,8 @@ func TestConsumer_WithKeyAuth(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "consumer", "create", "-f", tmpFile)
 	require.NoError(t, err, "consumer create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// 2. Create route with key-auth plugin via Admin API.
-	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-consumer-auth/get.
 	routeBody := fmt.Sprintf(`{
+		"id": "%s",
 		"uri": "/test-consumer-auth/*",
 		"plugins": {
 			"key-auth": {},
@@ -156,11 +158,12 @@ func TestConsumer_WithKeyAuth(t *testing.T) {
 			"type": "roundrobin",
 			"nodes": {"%s": 1}
 		}
-	}`, "127.0.0.1:8080")
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create auth route")
+	}`, routeID, "127.0.0.1:8080")
+	routeFile := filepath.Join(t.TempDir(), "route-with-key-auth.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0644))
+
+	stdout, stderr, err = runA6WithEnv(env, "route", "create", "-f", routeFile)
+	require.NoError(t, err, "failed to create auth route: stdout=%s stderr=%s", stdout, stderr)
 
 	// 3. Request with valid key → 200
 	req, err := http.NewRequest("GET", gatewayURL+"/test-consumer-auth/get", nil)
@@ -199,13 +202,12 @@ func TestConsumer_GetNonExistent(t *testing.T) {
 
 func TestConsumer_JSONOutput(t *testing.T) {
 	const username = "test-consumer-json-out"
-
-	deleteConsumer(t, username)
-	t.Cleanup(func() { deleteConsumer(t, username) })
-
-	createTestConsumer(t, username)
-
 	env := setupConsumerEnv(t)
+
+	deleteConsumerViaCLI(t, env, username)
+	t.Cleanup(func() { deleteConsumerViaAdmin(t, username) })
+
+	createConsumerViaCLI(t, env, username, fmt.Sprintf(`{"username":"%s","desc":"test consumer"}`, username))
 
 	// List with JSON output.
 	stdout, stderr, err := runA6WithEnv(env, "consumer", "list", "--output", "json")

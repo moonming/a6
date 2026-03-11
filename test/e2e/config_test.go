@@ -16,15 +16,19 @@ import (
 func TestConfig_DumpAndValidate(t *testing.T) {
 	const routeID = "test-config-dump-route-1"
 
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
-	createTestRoute(t, routeID, "config-dump-route", "/config-dump")
-
 	env := setupRouteEnv(t)
 
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
+
+	routeJSON := `{"id":"test-config-dump-route-1","name":"config-dump-route","uri":"/config-dump","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`
+	tmpFile := filepath.Join(t.TempDir(), "route.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(routeJSON), 0o644))
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", tmpFile)
+	require.NoError(t, err, "route create failed: stdout=%s stderr=%s", stdout, stderr)
+
 	dumpFile := filepath.Join(t.TempDir(), "config.yaml")
-	stdout, stderr, err := runA6WithEnv(env, "config", "dump", "-f", dumpFile)
+	stdout, stderr, err = runA6WithEnv(env, "config", "dump", "-f", dumpFile)
 	require.NoError(t, err, "config dump failed: stdout=%s stderr=%s", stdout, stderr)
 
 	content, err := os.ReadFile(dumpFile)

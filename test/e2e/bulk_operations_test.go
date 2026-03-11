@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,16 +15,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createLabeledRoute(t *testing.T, id, uri, labelKey, labelValue string) {
+func createLabeledRouteViaCLI(t *testing.T, env []string, id, uri, labelKey, labelValue string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"uri":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}},"labels":{"%s":"%s"}}`, uri, labelKey, labelValue)
-	resp, err := adminAPI(http.MethodPut, "/apisix/admin/routes/"+id, []byte(body))
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	routeJSON := fmt.Sprintf(`{"id":"%s","uri":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}},"labels":{"%s":"%s"}}`,
+		id, uri, labelKey, labelValue)
+	tmpFile := filepath.Join(t.TempDir(), id+".json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(routeJSON), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", tmpFile)
+	require.NoError(t, err, "route create %s failed: stdout=%s stderr=%s", id, stdout, stderr)
 }
 
-func routeExists(t *testing.T, id string) bool {
+func routeExistsViaCLI(t *testing.T, env []string, id string) bool {
+	t.Helper()
+	_, _, err := runA6WithEnv(env, "route", "get", id)
+	return err == nil
+}
+
+func deleteRouteViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "route", "delete", id, "--force")
+}
+
+func routeExistsViaAdmin(t *testing.T, id string) bool {
 	t.Helper()
 	resp, err := adminAPI(http.MethodGet, "/apisix/admin/routes/"+id, nil)
 	require.NoError(t, err)
@@ -30,7 +45,7 @@ func routeExists(t *testing.T, id string) bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-func deleteRouteQuiet(t *testing.T, id string) {
+func deleteRouteViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI(http.MethodDelete, "/apisix/admin/routes/"+id, nil)
 	if err == nil {
@@ -38,68 +53,89 @@ func deleteRouteQuiet(t *testing.T, id string) {
 	}
 }
 
+func setupBulkEnv(t *testing.T) []string {
+	t.Helper()
+	env := []string{
+		"A6_CONFIG_DIR=" + t.TempDir(),
+	}
+	_, _, err := runA6WithEnv(env, "context", "create", "test",
+		"--server", adminURL, "--api-key", adminKey)
+	require.NoError(t, err, "failed to create test context")
+	return env
+}
+
 func TestBulkDeleteByLabel(t *testing.T) {
 	id1 := "bulk-del-label-test-1"
 	id2 := "bulk-del-label-test-2"
 	id3 := "bulk-del-label-prod"
 
-	deleteRouteQuiet(t, id1)
-	deleteRouteQuiet(t, id2)
-	deleteRouteQuiet(t, id3)
+	env := setupBulkEnv(t)
+
+	deleteRouteViaCLI(t, env, id1)
+	deleteRouteViaCLI(t, env, id2)
+	deleteRouteViaCLI(t, env, id3)
 	t.Cleanup(func() {
-		deleteRouteQuiet(t, id1)
-		deleteRouteQuiet(t, id2)
-		deleteRouteQuiet(t, id3)
+		deleteRouteViaAdmin(t, id1)
+		deleteRouteViaAdmin(t, id2)
+		deleteRouteViaAdmin(t, id3)
 	})
 
-	createLabeledRoute(t, id1, "/bulk/label/1", "env", "test")
-	createLabeledRoute(t, id2, "/bulk/label/2", "env", "test")
-	createLabeledRoute(t, id3, "/bulk/label/3", "env", "prod")
+	createLabeledRouteViaCLI(t, env, id1, "/bulk/label/1", "env", "test")
+	createLabeledRouteViaCLI(t, env, id2, "/bulk/label/2", "env", "test")
+	createLabeledRouteViaCLI(t, env, id3, "/bulk/label/3", "env", "prod")
 
-	stdout, stderr, err := runA6("route", "delete", "--label", "env=test", "--force", "--server", adminURL, "--api-key", adminKey)
+	stdout, stderr, err := runA6WithEnv(env, "route", "delete", "--label", "env=test", "--force")
 	require.NoError(t, err, "stdout=%s stderr=%s", stdout, stderr)
 
-	assert.False(t, routeExists(t, id1))
-	assert.False(t, routeExists(t, id2))
-	assert.True(t, routeExists(t, id3))
+	assert.False(t, routeExistsViaAdmin(t, id1))
+	assert.False(t, routeExistsViaAdmin(t, id2))
+	assert.True(t, routeExistsViaAdmin(t, id3))
 }
 
 func TestBulkDeleteAll(t *testing.T) {
 	id1 := "bulk-del-all-1"
 	id2 := "bulk-del-all-2"
 
-	deleteRouteQuiet(t, id1)
-	deleteRouteQuiet(t, id2)
+	env := setupBulkEnv(t)
+
+	deleteRouteViaCLI(t, env, id1)
+	deleteRouteViaCLI(t, env, id2)
 	t.Cleanup(func() {
-		deleteRouteQuiet(t, id1)
-		deleteRouteQuiet(t, id2)
+		deleteRouteViaAdmin(t, id1)
+		deleteRouteViaAdmin(t, id2)
 	})
 
-	createLabeledRoute(t, id1, "/bulk/all/1", "suite", "bulk-all")
-	createLabeledRoute(t, id2, "/bulk/all/2", "suite", "bulk-all")
+	createLabeledRouteViaCLI(t, env, id1, "/bulk/all/1", "suite", "bulk-all")
+	createLabeledRouteViaCLI(t, env, id2, "/bulk/all/2", "suite", "bulk-all")
 
-	stdout, stderr, err := runA6("route", "delete", "--all", "--force", "--server", adminURL, "--api-key", adminKey)
+	stdout, stderr, err := runA6WithEnv(env, "route", "delete", "--all", "--force")
 	require.NoError(t, err, "stdout=%s stderr=%s", stdout, stderr)
 
-	assert.False(t, routeExists(t, id1))
-	assert.False(t, routeExists(t, id2))
+	assert.False(t, routeExistsViaAdmin(t, id1))
+	assert.False(t, routeExistsViaAdmin(t, id2))
 }
 
-func TestBulkExport(t *testing.T) {
+func TestBulkExportByLabel(t *testing.T) {
 	id1 := "bulk-export-1"
 	id2 := "bulk-export-2"
+	id3 := "bulk-export-nolabel"
 
-	deleteRouteQuiet(t, id1)
-	deleteRouteQuiet(t, id2)
+	env := setupBulkEnv(t)
+
+	deleteRouteViaCLI(t, env, id1)
+	deleteRouteViaCLI(t, env, id2)
+	deleteRouteViaCLI(t, env, id3)
 	t.Cleanup(func() {
-		deleteRouteQuiet(t, id1)
-		deleteRouteQuiet(t, id2)
+		deleteRouteViaAdmin(t, id1)
+		deleteRouteViaAdmin(t, id2)
+		deleteRouteViaAdmin(t, id3)
 	})
 
-	createLabeledRoute(t, id1, "/bulk/export/1", "env", "staging")
-	createLabeledRoute(t, id2, "/bulk/export/2", "env", "staging")
+	createLabeledRouteViaCLI(t, env, id1, "/bulk/export/1", "env", "staging")
+	createLabeledRouteViaCLI(t, env, id2, "/bulk/export/2", "env", "staging")
+	createLabeledRouteViaCLI(t, env, id3, "/bulk/export/3", "env", "prod")
 
-	stdout, stderr, err := runA6("route", "export", "--label", "env=staging", "--output", "json", "--server", adminURL, "--api-key", adminKey)
+	stdout, stderr, err := runA6WithEnv(env, "route", "export", "--label", "env=staging", "--output", "json")
 	require.NoError(t, err, "stdout=%s stderr=%s", stdout, stderr)
 
 	var routes []map[string]interface{}
@@ -115,4 +151,5 @@ func TestBulkExport(t *testing.T) {
 	joined := strings.Join(ids, ",")
 	assert.Contains(t, joined, id1)
 	assert.Contains(t, joined, id2)
+	assert.NotContains(t, joined, id3, "route with env=prod should not be exported when filtering by env=staging")
 }

@@ -13,12 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteGlobalRule(t *testing.T, id string) {
+func deleteGlobalRuleViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/global_rules/"+id, nil)
 	if err == nil {
 		resp.Body.Close()
 	}
+}
+
+func deleteGlobalRuleViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "global-rule", "delete", id, "--force")
 }
 
 func setupGlobalRuleEnv(t *testing.T) []string {
@@ -32,10 +37,10 @@ func setupGlobalRuleEnv(t *testing.T) []string {
 func TestGlobalRule_CRUD(t *testing.T) {
 	const ruleID = "test-global-rule-crud-1"
 
-	deleteGlobalRule(t, ruleID)
-	t.Cleanup(func() { deleteGlobalRule(t, ruleID) })
-
 	env := setupGlobalRuleEnv(t)
+
+	deleteGlobalRuleViaCLI(t, env, ruleID)
+	t.Cleanup(func() { deleteGlobalRuleViaAdmin(t, ruleID) })
 
 	createJSON := `{
 		"id": "test-global-rule-crud-1",
@@ -87,9 +92,8 @@ func TestGlobalRule_CRUD(t *testing.T) {
 
 func TestGlobalRule_ListEmpty(t *testing.T) {
 	const cleanupID = "test-global-rule-list-empty-clean"
-	deleteGlobalRule(t, cleanupID)
-
 	env := setupGlobalRuleEnv(t)
+	deleteGlobalRuleViaCLI(t, env, cleanupID)
 
 	stdout, stderr, err := runA6WithEnv(env, "global-rule", "list")
 	require.NoError(t, err, "global-rule list failed: stdout=%s stderr=%s", stdout, stderr)
@@ -122,10 +126,10 @@ func TestGlobalRule_DeleteNonExistent(t *testing.T) {
 func TestGlobalRule_JSONOutput(t *testing.T) {
 	const ruleID = "test-global-rule-json-1"
 
-	deleteGlobalRule(t, ruleID)
-	t.Cleanup(func() { deleteGlobalRule(t, ruleID) })
-
 	env := setupGlobalRuleEnv(t)
+
+	deleteGlobalRuleViaCLI(t, env, ruleID)
+	t.Cleanup(func() { deleteGlobalRuleViaAdmin(t, ruleID) })
 
 	createJSON := `{
 		"id": "test-global-rule-json-1",

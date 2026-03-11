@@ -13,12 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteConsumerGroup(t *testing.T, id string) {
+func deleteConsumerGroupViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/consumer_groups/"+id, nil)
 	if err == nil {
 		resp.Body.Close()
 	}
+}
+
+func deleteConsumerGroupViaCLI(t *testing.T, env []string, id string) {
+	t.Helper()
+	runA6WithEnv(env, "consumer-group", "delete", id, "--force")
 }
 
 func setupConsumerGroupEnv(t *testing.T) []string {
@@ -32,10 +37,10 @@ func setupConsumerGroupEnv(t *testing.T) []string {
 func TestConsumerGroup_CRUD(t *testing.T) {
 	const groupID = "test-consumer-group-1"
 
-	deleteConsumerGroup(t, groupID)
-	t.Cleanup(func() { deleteConsumerGroup(t, groupID) })
-
 	env := setupConsumerGroupEnv(t)
+
+	deleteConsumerGroupViaCLI(t, env, groupID)
+	t.Cleanup(func() { deleteConsumerGroupViaAdmin(t, groupID) })
 
 	createJSON := `{
 		"id": "test-consumer-group-1",
@@ -97,9 +102,8 @@ func TestConsumerGroup_CRUD(t *testing.T) {
 
 func TestConsumerGroup_ListEmpty(t *testing.T) {
 	const cleanupID = "test-consumer-group-list-empty-clean"
-	deleteConsumerGroup(t, cleanupID)
-
 	env := setupConsumerGroupEnv(t)
+	deleteConsumerGroupViaCLI(t, env, cleanupID)
 
 	stdout, stderr, err := runA6WithEnv(env, "consumer-group", "list")
 	require.NoError(t, err, "consumer-group list failed: stdout=%s stderr=%s", stdout, stderr)
@@ -123,10 +127,10 @@ func TestConsumerGroup_GetNonExistent(t *testing.T) {
 func TestConsumerGroup_JSONOutput(t *testing.T) {
 	const groupID = "test-consumer-group-json-1"
 
-	deleteConsumerGroup(t, groupID)
-	t.Cleanup(func() { deleteConsumerGroup(t, groupID) })
-
 	env := setupConsumerGroupEnv(t)
+
+	deleteConsumerGroupViaCLI(t, env, groupID)
+	t.Cleanup(func() { deleteConsumerGroupViaAdmin(t, groupID) })
 
 	createJSON := `{
 		"id": "test-consumer-group-json-1",

@@ -16,23 +16,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// deleteRoute removes a route via the Admin API. Used for test cleanup.
-func deleteRoute(t *testing.T, id string) {
-	t.Helper()
-	resp, err := adminAPI("DELETE", "/apisix/admin/routes/"+id, nil)
-	if err == nil {
-		resp.Body.Close()
-	}
-}
+// deleteRouteViaAdmin and deleteRouteViaCLI live in bulk_operations_test.go.
 
-// createTestRoute creates a route via the Admin API for test setup.
-func createTestRoute(t *testing.T, id, name, uri string) {
+func createTestRouteViaCLI(t *testing.T, env []string, id, name, uri string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"uri":"%s","name":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`, uri, name)
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+id, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test route")
+	body := fmt.Sprintf(`{"id":"%s","uri":"%s","name":"%s","upstream":{"type":"roundrobin","nodes":{"127.0.0.1:8080":1}}}`, id, uri, name)
+	tmpFile := filepath.Join(t.TempDir(), id+".json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(body), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", tmpFile)
+	require.NoError(t, err, "failed to create test route %s: stdout=%s stderr=%s", id, stdout, stderr)
 }
 
 // setupRouteEnv returns env vars and creates a context pointing at the real APISIX.
@@ -49,12 +42,10 @@ func setupRouteEnv(t *testing.T) []string {
 
 func TestRoute_CRUD(t *testing.T) {
 	const routeID = "test-route-crud-1"
-
-	// Cleanup before and after.
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
 	env := setupRouteEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
 	// 1. Create: write a JSON file and run `a6 route create -f file.json`
 	routeJSON := `{
@@ -123,11 +114,6 @@ func TestRoute_CRUD(t *testing.T) {
 }
 
 func TestRoute_ListEmpty(t *testing.T) {
-	// Clean up any routes that might exist from other tests.
-	resp, err := adminAPI("GET", "/apisix/admin/routes", nil)
-	require.NoError(t, err)
-	resp.Body.Close()
-
 	env := setupRouteEnv(t)
 
 	stdout, stderr, err := runA6WithEnv(env, "route", "list")
@@ -148,18 +134,17 @@ func TestRoute_ListWithFilters(t *testing.T) {
 		routeID1 = "test-route-filter-1"
 		routeID2 = "test-route-filter-2"
 	)
+	env := setupRouteEnv(t)
 
-	deleteRoute(t, routeID1)
-	deleteRoute(t, routeID2)
+	deleteRouteViaCLI(t, env, routeID1)
+	deleteRouteViaCLI(t, env, routeID2)
 	t.Cleanup(func() {
-		deleteRoute(t, routeID1)
-		deleteRoute(t, routeID2)
+		deleteRouteViaAdmin(t, routeID1)
+		deleteRouteViaAdmin(t, routeID2)
 	})
 
-	createTestRoute(t, routeID1, "route-one-alpha", "/filter-alpha")
-	createTestRoute(t, routeID2, "route-two-beta", "/filter-beta")
-
-	env := setupRouteEnv(t)
+	createTestRouteViaCLI(t, env, routeID1, "route-one-alpha", "/filter-alpha")
+	createTestRouteViaCLI(t, env, routeID2, "route-two-beta", "/filter-beta")
 
 	// Filter by name — should show only the matching route.
 	stdout, stderr, err := runA6WithEnv(env, "route", "list", "--name", "route-one-alpha")
@@ -188,13 +173,12 @@ func TestRoute_DeleteNonExistent(t *testing.T) {
 
 func TestRoute_DeleteWithForce(t *testing.T) {
 	const routeID = "test-route-force-del"
-
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
-	createTestRoute(t, routeID, "force-delete-route", "/force-delete")
-
 	env := setupRouteEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
+
+	createTestRouteViaCLI(t, env, routeID, "force-delete-route", "/force-delete")
 
 	stdout, stderr, err := runA6WithEnv(env, "route", "delete", routeID, "--force")
 	require.NoError(t, err, "route delete --force failed: stdout=%s stderr=%s", stdout, stderr)
@@ -211,13 +195,12 @@ func TestRoute_DeleteWithForce(t *testing.T) {
 
 func TestRoute_JSONOutput(t *testing.T) {
 	const routeID = "test-route-json-out"
-
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
-	createTestRoute(t, routeID, "json-output-route", "/json-output")
-
 	env := setupRouteEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
+
+	createTestRouteViaCLI(t, env, routeID, "json-output-route", "/json-output")
 
 	// List with JSON output.
 	stdout, stderr, err := runA6WithEnv(env, "route", "list", "--output", "json")
@@ -235,13 +218,12 @@ func TestRoute_JSONOutput(t *testing.T) {
 
 func TestRoute_YAMLOutput(t *testing.T) {
 	const routeID = "test-route-yaml-out"
-
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
-
-	createTestRoute(t, routeID, "yaml-output-route", "/yaml-output")
-
 	env := setupRouteEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
+
+	createTestRouteViaCLI(t, env, routeID, "yaml-output-route", "/yaml-output")
 
 	stdout, stderr, err := runA6WithEnv(env, "route", "get", routeID, "--output", "yaml")
 	require.NoError(t, err, "route get --output yaml failed: stdout=%s stderr=%s", stdout, stderr)
@@ -253,13 +235,13 @@ func TestRoute_YAMLOutput(t *testing.T) {
 
 func TestRoute_TrafficForwarding(t *testing.T) {
 	const routeID = "test-route-traffic"
+	env := setupRouteEnv(t)
 
-	deleteRoute(t, routeID)
-	t.Cleanup(func() { deleteRoute(t, routeID) })
+	deleteRouteViaCLI(t, env, routeID)
+	t.Cleanup(func() { deleteRouteViaAdmin(t, routeID) })
 
-	// Create route via Admin API: forward /test-e2e-traffic/* to httpbin (127.0.0.1:8080).
-	// Use proxy-rewrite to strip the prefix so httpbin receives /get instead of /test-e2e-traffic/get.
-	routeBody := `{
+	routeBody := fmt.Sprintf(`{
+		"id": "%s",
 		"uri": "/test-e2e-traffic/*",
 		"name": "traffic-test-route",
 		"plugins": {
@@ -273,11 +255,12 @@ func TestRoute_TrafficForwarding(t *testing.T) {
 				"127.0.0.1:8080": 1
 			}
 		}
-	}`
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create traffic test route")
+	}`, routeID)
+	tmpFile := filepath.Join(t.TempDir(), "route-traffic.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(routeBody), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "route", "create", "-f", tmpFile)
+	require.NoError(t, err, "failed to create traffic test route: stdout=%s stderr=%s", stdout, stderr)
 
 	// Retry to allow APISIX to propagate the route config from etcd.
 	var gwResp *http.Response

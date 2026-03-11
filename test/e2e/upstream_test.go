@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteUpstream(t *testing.T, id string) {
+func deleteUpstreamViaAdmin(t *testing.T, id string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/upstreams/"+id, nil)
 	if err == nil {
@@ -24,13 +24,19 @@ func deleteUpstream(t *testing.T, id string) {
 	}
 }
 
-func createTestUpstream(t *testing.T, id, name string) {
+func deleteUpstreamViaCLI(t *testing.T, env []string, id string) {
 	t.Helper()
-	body := fmt.Sprintf(`{"name":"%s","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`, name)
-	resp, err := adminAPI("PUT", "/apisix/admin/upstreams/"+id, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create test upstream")
+	_, _, _ = runA6WithEnv(env, "upstream", "delete", id, "--force")
+}
+
+func createTestUpstreamViaCLI(t *testing.T, env []string, id, name string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"id":"%s","name":"%s","type":"roundrobin","nodes":{"127.0.0.1:8080":1}}`, id, name)
+	tmpFile := filepath.Join(t.TempDir(), id+".json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(body), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", tmpFile)
+	require.NoError(t, err, "failed to create test upstream %s: stdout=%s stderr=%s", id, stdout, stderr)
 }
 
 func setupUpstreamEnv(t *testing.T) []string {
@@ -46,11 +52,10 @@ func setupUpstreamEnv(t *testing.T) []string {
 
 func TestUpstream_CRUD(t *testing.T) {
 	const upstreamID = "test-upstream-crud-1"
-
-	deleteUpstream(t, upstreamID)
-	t.Cleanup(func() { deleteUpstream(t, upstreamID) })
-
 	env := setupUpstreamEnv(t)
+
+	deleteUpstreamViaCLI(t, env, upstreamID)
+	t.Cleanup(func() { deleteUpstreamViaAdmin(t, upstreamID) })
 
 	// 1. Create
 	upstreamJSON := `{
@@ -110,21 +115,20 @@ func TestUpstream_CRUD(t *testing.T) {
 
 func TestUpstream_CreateWithNodes(t *testing.T) {
 	const upstreamID = "test-upstream-nodes-1"
-
-	deleteUpstream(t, upstreamID)
-	t.Cleanup(func() { deleteUpstream(t, upstreamID) })
-
 	env := setupUpstreamEnv(t)
 
-	// Create upstream with multiple nodes via Admin API
-	body := `{"name":"multi-node-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1,"127.0.0.1:8081":2}}`
-	resp, err := adminAPI("PUT", "/apisix/admin/upstreams/"+upstreamID, []byte(body))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400)
+	deleteUpstreamViaCLI(t, env, upstreamID)
+	t.Cleanup(func() { deleteUpstreamViaAdmin(t, upstreamID) })
+
+	body := fmt.Sprintf(`{"id":"%s","name":"multi-node-upstream","type":"roundrobin","nodes":{"127.0.0.1:8080":1,"127.0.0.1:8081":2}}`, upstreamID)
+	tmpFile := filepath.Join(t.TempDir(), "upstream-multi-node.json")
+	require.NoError(t, os.WriteFile(tmpFile, []byte(body), 0644))
+
+	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", tmpFile)
+	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
 	// Verify via a6 upstream get
-	stdout, stderr, err := runA6WithEnv(env, "upstream", "get", upstreamID, "--output", "json")
+	stdout, stderr, err = runA6WithEnv(env, "upstream", "get", upstreamID, "--output", "json")
 	require.NoError(t, err, "upstream get failed: stdout=%s stderr=%s", stdout, stderr)
 
 	var result map[string]interface{}
@@ -141,18 +145,17 @@ func TestUpstream_ListWithFilters(t *testing.T) {
 		upstreamID1 = "test-upstream-filter-1"
 		upstreamID2 = "test-upstream-filter-2"
 	)
+	env := setupUpstreamEnv(t)
 
-	deleteUpstream(t, upstreamID1)
-	deleteUpstream(t, upstreamID2)
+	deleteUpstreamViaCLI(t, env, upstreamID1)
+	deleteUpstreamViaCLI(t, env, upstreamID2)
 	t.Cleanup(func() {
-		deleteUpstream(t, upstreamID1)
-		deleteUpstream(t, upstreamID2)
+		deleteUpstreamViaAdmin(t, upstreamID1)
+		deleteUpstreamViaAdmin(t, upstreamID2)
 	})
 
-	createTestUpstream(t, upstreamID1, "upstream-one-alpha")
-	createTestUpstream(t, upstreamID2, "upstream-two-beta")
-
-	env := setupUpstreamEnv(t)
+	createTestUpstreamViaCLI(t, env, upstreamID1, "upstream-one-alpha")
+	createTestUpstreamViaCLI(t, env, upstreamID2, "upstream-two-beta")
 
 	stdout, stderr, err := runA6WithEnv(env, "upstream", "list", "--name", "upstream-one-alpha")
 	require.NoError(t, err, "upstream list --name failed: stdout=%s stderr=%s", stdout, stderr)
@@ -174,15 +177,14 @@ func TestUpstream_RouteWithUpstreamID(t *testing.T) {
 		upstreamID = "test-upstream-route-ref"
 		routeID    = "test-route-ups-ref"
 	)
-
-	deleteRoute(t, routeID)
-	deleteUpstream(t, upstreamID)
-	t.Cleanup(func() {
-		deleteRoute(t, routeID)
-		deleteUpstream(t, upstreamID)
-	})
-
 	env := setupUpstreamEnv(t)
+
+	deleteRouteViaCLI(t, env, routeID)
+	deleteUpstreamViaCLI(t, env, upstreamID)
+	t.Cleanup(func() {
+		deleteRouteViaAdmin(t, routeID)
+		deleteUpstreamViaAdmin(t, upstreamID)
+	})
 
 	// Create upstream via a6
 	upstreamJSON := fmt.Sprintf(`{
@@ -199,13 +201,12 @@ func TestUpstream_RouteWithUpstreamID(t *testing.T) {
 	stdout, stderr, err := runA6WithEnv(env, "upstream", "create", "-f", tmpFile)
 	require.NoError(t, err, "upstream create failed: stdout=%s stderr=%s", stdout, stderr)
 
-	// Create route via Admin API with upstream_id.
-	// proxy-rewrite strips the prefix so httpbin receives /get instead of /test-ups-ref/get.
-	routeBody := fmt.Sprintf(`{"uri":"/test-ups-ref/*","name":"route-with-upstream-id","upstream_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-ups-ref/(.*)","/$1"]}}}`, upstreamID)
-	resp, err := adminAPI("PUT", "/apisix/admin/routes/"+routeID, []byte(routeBody))
-	require.NoError(t, err)
-	resp.Body.Close()
-	require.Less(t, resp.StatusCode, 400, "failed to create route with upstream_id")
+	routeBody := fmt.Sprintf(`{"id":"%s","uri":"/test-ups-ref/*","name":"route-with-upstream-id","upstream_id":"%s","plugins":{"proxy-rewrite":{"regex_uri":["^/test-ups-ref/(.*)","/$1"]}}}`, routeID, upstreamID)
+	routeFile := filepath.Join(t.TempDir(), "route-with-upstream-id.json")
+	require.NoError(t, os.WriteFile(routeFile, []byte(routeBody), 0644))
+
+	stdout, stderr, err = runA6WithEnv(env, "route", "create", "-f", routeFile)
+	require.NoError(t, err, "failed to create route with upstream_id: stdout=%s stderr=%s", stdout, stderr)
 
 	var gwResp *http.Response
 	for i := 0; i < 10; i++ {

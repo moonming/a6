@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func deleteSecret(t *testing.T, managerID string) {
+func deleteSecretViaAdmin(t *testing.T, managerID string) {
 	t.Helper()
 	resp, err := adminAPI("DELETE", "/apisix/admin/secrets/"+managerID, nil)
 	if err == nil {
@@ -32,10 +32,10 @@ func setupSecretEnv(t *testing.T) []string {
 func TestSecret_CRUD(t *testing.T) {
 	const secretID = "vault/test-vault-secret-crud-1"
 
-	deleteSecret(t, secretID)
-	t.Cleanup(func() { deleteSecret(t, secretID) })
-
 	env := setupSecretEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "secret", "delete", secretID, "--force")
+	t.Cleanup(func() { deleteSecretViaAdmin(t, secretID) })
 
 	createJSON := `{
 		"uri": "http://127.0.0.1:8200",
@@ -92,10 +92,10 @@ func TestSecret_GetNonExistent(t *testing.T) {
 func TestSecret_JSONOutput(t *testing.T) {
 	const secretID = "vault/test-vault-secret-json-1"
 
-	deleteSecret(t, secretID)
-	t.Cleanup(func() { deleteSecret(t, secretID) })
-
 	env := setupSecretEnv(t)
+
+	_, _, _ = runA6WithEnv(env, "secret", "delete", secretID, "--force")
+	t.Cleanup(func() { deleteSecretViaAdmin(t, secretID) })
 
 	createJSON := `{
 		"uri": "http://127.0.0.1:8200",
