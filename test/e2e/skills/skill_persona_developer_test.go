@@ -91,5 +91,5 @@ func TestSkillPersonaDeveloper(t *testing.T) {
 	assert.Contains(t, stdout, "header")
 
 	stdout, stderr, err = runA6WithEnv(env, "route", "delete", svcRouteID, "--force")
-	require.NoError(t, err, "route delete: stdout=%s stderr=%s", stdout, stderr)
+	assert.NoError(t, err, "route delete: stdout=%s stderr=%s", stdout, stderr)
 }
